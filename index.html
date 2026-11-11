@@ -27,7 +27,7 @@ input[type=file]{display:none}.filebtn{display:block;text-align:center;backgroun
 .pill.yes{background:#e3f5e9;color:#146c35}.pill.no{background:#fde8e8;color:#a32626}
 .actions{display:flex;gap:8px;margin-top:11px}.actions button{flex:1;padding:11px;font-size:15px}
 .yesbtn{background:#e3f5e9;color:#146c35}.nobtn{background:#fde8e8;color:#a32626}.clearbtn{background:#edf1f6;color:#475569;flex:0 0 48px!important}
-.note{font-size:13px;color:#687386;line-height:1.45}.fieldlabel{display:block;font-size:13px;font-weight:650;color:#475569;margin:9px 0 5px}.field{width:100%;padding:11px 12px;border:1px solid #d5dce6;border-radius:10px;font-size:16px;background:#fff;color:#172033}.macedit{margin-top:10px}.addgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.addgrid .wide{grid-column:1/-1}.hidden{display:none!important}
+.note{font-size:13px;color:#687386;line-height:1.45}.autosave{display:flex;align-items:center;gap:7px;font-size:13px;color:#687386;margin-top:9px}.autosave-dot{width:8px;height:8px;border-radius:50%;background:#16a34a;display:inline-block}.fieldlabel{display:block;font-size:13px;font-weight:650;color:#475569;margin:9px 0 5px}.field{width:100%;padding:11px 12px;border:1px solid #d5dce6;border-radius:10px;font-size:16px;background:#fff;color:#172033}.macedit{margin-top:10px}.addgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.addgrid .wide{grid-column:1/-1}.hidden{display:none!important}
 #message{font-size:14px;color:#475569;margin-top:10px;white-space:pre-wrap}
 footer{font-size:12px;color:#778195;text-align:center;margin:20px 0}
 </style>
@@ -52,7 +52,8 @@ footer{font-size:12px;color:#778195;text-align:center;margin:20px 0}
 <span class="stat">Не проверено: <b id="blankCount">0</b></span>
 </div>
 <div class="bar"><div class="fill" id="progress"></div></div>
-<p class="note">Отметки сохраняются в этом браузере, пока вы не очистите данные сайта. Оригинальный файл не меняется.</p>
+<div class="autosave"><span class="autosave-dot"></span><span id="autosaveState">Автосохранение включено</span></div>
+<p class="note">Изменения автоматически сохраняются на этом устройстве. При следующем открытии сайта можно продолжить работу.</p>
 </div>
 <div class="panel">
 <input id="search" type="search" placeholder="Поиск: номер, название, инвентарный номер">
@@ -87,7 +88,22 @@ footer{font-size:12px;color:#778195;text-align:center;margin:20px 0}
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script>
 const $=id=>document.getElementById(id);
-let zipOriginal=null, xmlDoc=null, tableRows=[], records=[], statuses={}, currentFilter="all", sourceName="inventory", equipmentTable=null, headerCells=[], macIndex=-1, statusIndex=-1;
+let zipOriginal=null, xmlDoc=null, tableRows=[], records=[], statuses={}, currentFilter="all", sourceName="inventory", equipmentTable=null, headerCells=[], macIndex=-1, statusIndex=-1, sourceBlob=null, autosaveTimer=null;
+const DB_NAME="inventory-helper-db", STORE_NAME="drafts", DRAFT_KEY="current";
+function openDraftDB(){return new Promise((resolve,reject)=>{const req=indexedDB.open(DB_NAME,1);req.onupgradeneeded=()=>req.result.createObjectStore(STORE_NAME);req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error)})}
+async function putDraft(data){const db=await openDraftDB();return new Promise((resolve,reject)=>{const tx=db.transaction(STORE_NAME,"readwrite");tx.objectStore(STORE_NAME).put(data,DRAFT_KEY);tx.oncomplete=()=>{db.close();resolve()};tx.onerror=()=>{db.close();reject(tx.error)}})}
+async function getDraft(){const db=await openDraftDB();return new Promise((resolve,reject)=>{const tx=db.transaction(STORE_NAME,"readonly"),req=tx.objectStore(STORE_NAME).get(DRAFT_KEY);req.onsuccess=()=>{db.close();resolve(req.result||null)};req.onerror=()=>{db.close();reject(req.error)}})}
+function scheduleAutosave(){if(!sourceBlob||!xmlDoc)return;clearTimeout(autosaveTimer);$("autosaveState").textContent="Сохранение…";autosaveTimer=setTimeout(async()=>{try{for(const r of records){setCellText(r.statusCell,statuses[r.rowIndex]||"");if(r.macCell)setCellText(r.macCell,r.mac||"")}const xmlText=new XMLSerializer().serializeToString(xmlDoc);await putDraft({fileBlob:sourceBlob,xmlText,statuses,sourceName,updatedAt:Date.now()});$("autosaveState").textContent="Сохранено автоматически · "+new Date().toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"})}catch(err){$("autosaveState").textContent="Не удалось сохранить автоматически";showMessage("Ошибка автосохранения: "+err.message)}},350)}
+function parseWorkspace(xmlText,filename,restoredStatuses={}){
+ xmlDoc=new DOMParser().parseFromString(xmlText,"application/xml");
+ if(xmlDoc.getElementsByTagName("parsererror").length)throw new Error("Не удалось прочитать структуру Word-документа.");
+ const tables=Array.from(xmlDoc.getElementsByTagNameNS("*","tbl"));let found=null,headerIndex=-1;
+ for(const table of tables){const rows=Array.from(table.children).filter(x=>x.localName==="tr");for(let ri=0;ri<rows.length;ri++){const cs=cellsOf(rows[ri]),vals=cs.map(textOf);const ci=vals.findIndex(v=>norm(v).includes("фактическое присутствие")||norm(v).includes("фактическое наличие"));if(ci>=0){found=table;equipmentTable=table;headerIndex=ri;statusIndex=ci;macIndex=vals.findIndex(v=>norm(v).includes("mac адрес")||norm(v).includes("mac-адрес"));headerCells=cs;tableRows=rows;break}}if(found)break}
+ if(!found)throw new Error("Не найден столбец «Фактическое присутствие/отсутствие». Нужен DOCX с таблицей инвентаризации.");
+ records=[];for(let ri=headerIndex+1;ri<tableRows.length;ri++){const cs=cellsOf(tableRows[ri]),vals=cs.map(textOf),num=vals[0]||"";if(!/^\d+$/.test(num))continue;records.push({rowIndex:ri,num,type:vals[1]||"",name:vals[2]||"",inv:vals[3]||"",serial:vals[4]||"",mac:macIndex>=0?(vals[macIndex]||""):"",statusCell:cs[statusIndex],macCell:macIndex>=0?cs[macIndex]:null,cells:cs})}
+ if(!records.length)throw new Error("В таблице не найдены строки оборудования с нумерацией.");
+ statuses=restoredStatuses||{};sourceName=filename.replace(/\.docx$/i,"");$("filename").textContent=filename+" · "+records.length+" позиций";$("workspace").classList.remove("hidden");render();
+}
 function norm(s){return (s||"").replace(/\s+/g," ").trim().toLowerCase()}
 function textOf(el){return Array.from(el.getElementsByTagNameNS("*","t")).map(x=>x.textContent).join("").replace(/\u00a0/g," ").trim()}
 function cellsOf(row){return Array.from(row.children).filter(x=>x.localName==="tc")}
@@ -102,40 +118,13 @@ function setCellText(cell,value){
 }
 function showMessage(s){$("message").textContent=s}
 $("docxFile").addEventListener("change",async e=>{
- const file=e.target.files[0]; if(!file)return;
- try{
-  if(!window.JSZip)throw new Error("Не загрузилась библиотека для чтения Word. Проверьте интернет и обновите страницу.");
-  showMessage("Открываю документ…");
-  const buf=await file.arrayBuffer(); zipOriginal=await JSZip.loadAsync(buf);
-  const xml=await zipOriginal.file("word/document.xml").async("string");
-  xmlDoc=new DOMParser().parseFromString(xml,"application/xml");
-  if(xmlDoc.getElementsByTagName("parsererror").length)throw new Error("Не удалось прочитать структуру Word-документа.");
-  const tables=Array.from(xmlDoc.getElementsByTagNameNS("*","tbl"));
-  let found=null, headerIndex=-1;
-  for(const table of tables){
-   const rows=Array.from(table.children).filter(x=>x.localName==="tr");
-   for(let ri=0;ri<rows.length;ri++){
-    const cs=cellsOf(rows[ri]), vals=cs.map(textOf);
-    const ci=vals.findIndex(v=>norm(v).includes("фактическое присутствие")||norm(v).includes("фактическое наличие"));
-    if(ci>=0){found=table;equipmentTable=table;headerIndex=ri;statusIndex=ci;macIndex=vals.findIndex(v=>norm(v).includes("mac адрес")||norm(v).includes("mac-адрес"));headerCells=cs;tableRows=rows;break}
-   }
-   if(found)break;
-  }
-  if(!found)throw new Error("Не найден столбец «Фактическое присутствие/отсутствие». Нужен DOCX с таблицей инвентаризации.");
-  records=[];
-  for(let ri=headerIndex+1;ri<tableRows.length;ri++){
-   const cs=cellsOf(tableRows[ri]), vals=cs.map(textOf);
-   const num=vals[0]||"";
-   if(!/^\d+$/.test(num))continue;
-   records.push({rowIndex:ri,num,type:vals[1]||"",name:vals[2]||"",inv:vals[3]||"",serial:vals[4]||"",mac:macIndex>=0?(vals[macIndex]||""):"",statusCell:cs[statusIndex],macCell:macIndex>=0?cs[macIndex]:null,cells:cs});
-  }
-  if(!records.length)throw new Error("В таблице не найдены строки оборудования с нумерацией.");
-  statuses={}; sourceName=file.name.replace(/\.docx$/i,"");
-  $("filename").textContent=file.name+" · "+records.length+" позиций";
-  $("workspace").classList.remove("hidden"); showMessage("Документ открыт. Отмечайте оборудование в любом порядке.");
-  render();
- }catch(err){showMessage("Ошибка: "+err.message);$("workspace").classList.add("hidden")}
+ const file=e.target.files[0];if(!file)return;
+ try{if(!window.JSZip)throw new Error("Не загрузилась библиотека для чтения Word. Проверьте интернет и обновите страницу.");showMessage("Открываю документ…");sourceBlob=file;zipOriginal=await JSZip.loadAsync(await file.arrayBuffer());const xml=await zipOriginal.file("word/document.xml").async("string");parseWorkspace(xml,file.name,{});showMessage("Документ открыт. Отмечайте оборудование в любом порядке.");scheduleAutosave();}
+ catch(err){showMessage("Ошибка: "+err.message);$("workspace").classList.add("hidden")}
 });
+async function restoreDraft(){try{const draft=await getDraft();if(!draft||!window.JSZip)return;sourceBlob=draft.fileBlob;zipOriginal=await JSZip.loadAsync(sourceBlob);zipOriginal.file("word/document.xml",draft.xmlText);parseWorkspace(draft.xmlText,(draft.sourceName||"inventory")+".docx",draft.statuses||{});$("autosaveState").textContent="Восстановлена предыдущая работа · "+new Date(draft.updatedAt).toLocaleString("ru-RU");showMessage("Предыдущая инвентаризация восстановлена. Можно продолжать работу.");}catch(err){showMessage("Не удалось восстановить автосохранение: "+err.message)}}
+restoreDraft();
+
 function updateStats(){
  const yes=Object.values(statuses).filter(v=>v==="Да").length,no=Object.values(statuses).filter(v=>v==="Нет").length,blank=records.length-yes-no;
  $("total").textContent=records.length;$("yesCount").textContent=yes;$("noCount").textContent=no;$("blankCount").textContent=blank;
@@ -156,12 +145,12 @@ function render(){
   const nm=document.createElement("div");nm.className="itemname";nm.textContent="№ "+r.num+". "+(r.name||r.type||"Оборудование");
   const meta=document.createElement("div");meta.className="meta";meta.textContent=[r.type,r.inv,r.serial].filter(Boolean).join(" · ");
   info.append(nm,meta);
-  if(r.macCell){const macWrap=document.createElement("div");macWrap.className="macedit";const lab=document.createElement("label");lab.className="fieldlabel";lab.textContent="MAC-адрес";const inp=document.createElement("input");inp.className="field";inp.type="text";inp.autocapitalize="characters";inp.value=r.mac||"";inp.placeholder="Введите или исправьте MAC-адрес";inp.addEventListener("input",()=>{r.mac=inp.value});macWrap.append(lab,inp);info.append(macWrap)}
+  if(r.macCell){const macWrap=document.createElement("div");macWrap.className="macedit";const lab=document.createElement("label");lab.className="fieldlabel";lab.textContent="MAC-адрес";const inp=document.createElement("input");inp.className="field";inp.type="text";inp.autocapitalize="characters";inp.value=r.mac||"";inp.placeholder="Введите или исправьте MAC-адрес";inp.addEventListener("input",()=>{r.mac=inp.value;scheduleAutosave()});macWrap.append(lab,inp);info.append(macWrap)}
   const pill=document.createElement("span");pill.className="pill "+(status==="Да"?"yes":status==="Нет"?"no":"");pill.textContent=status||"Не проверено";
   top.append(info,pill);div.append(top);
   const actions=document.createElement("div");actions.className="actions";
   for(const [label,val,cls] of [["Да","Да","yesbtn"],["Нет","Нет","nobtn"],["×","","clearbtn"]]){
-   const b=document.createElement("button");b.textContent=label;b.className=cls;b.addEventListener("click",()=>{if(val)statuses[r.rowIndex]=val;else delete statuses[r.rowIndex];render()});actions.append(b);
+   const b=document.createElement("button");b.textContent=label;b.className=cls;b.addEventListener("click",()=>{if(val)statuses[r.rowIndex]=val;else delete statuses[r.rowIndex];render();scheduleAutosave()});actions.append(b);
   }
   div.append(actions);list.append(div);
  }
@@ -170,7 +159,7 @@ $("search").addEventListener("input",render);
 document.querySelectorAll(".filters button").forEach(b=>b.addEventListener("click",()=>{
  currentFilter=b.dataset.filter;document.querySelectorAll(".filters button").forEach(x=>x.classList.toggle("active",x===b));render();
 }));
-$("reset").addEventListener("click",()=>{if(confirm("Сбросить все отметки?")){statuses={};render()}});
+$("reset").addEventListener("click",()=>{if(confirm("Сбросить все отметки?")){statuses={};render();scheduleAutosave()}});
 $("addEquipment").addEventListener("click",()=>{
  try{
   if(!equipmentTable||!records.length)throw new Error("Сначала откройте Word-файл.");
@@ -187,7 +176,7 @@ $("addEquipment").addEventListener("click",()=>{
   $("newType").value=$("newName").value=$("newInv").value=$("newSerial").value=$("newMac").value="";
   $("newStatus").value="";
   currentFilter="all";document.querySelectorAll(".filters button").forEach(x=>x.classList.toggle("active",x.dataset.filter==="all"));
-  showMessage("Оборудование добавлено в список. Оно попадёт в скачанный Word-файл.");render();
+  showMessage("Оборудование добавлено в список. Оно попадёт в скачанный Word-файл.");render();scheduleAutosave();
  }catch(err){showMessage("Не удалось добавить оборудование: "+err.message)}
 });
 $("save").addEventListener("click",async()=>{
