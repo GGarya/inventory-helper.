@@ -14,8 +14,10 @@ button,.filebtn{border:0;border-radius:12px;padding:13px 15px;font-size:16px;fon
 .primary{background:#172033;color:white;width:100%}.secondary{background:#edf1f6;color:#172033}
 input[type=search]{width:100%;padding:13px;border:1px solid #d5dce6;border-radius:12px;font-size:16px;background:white}
 input[type=file]{display:none}.filebtn{display:block;text-align:center;background:#172033;color:white}
-.stats{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:14px;margin:10px 0}
-.stat{background:#f2f4f7;padding:9px 11px;border-radius:10px}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;font-size:14px;margin:10px 0}
+.stat{background:#f2f4f7;padding:10px 12px;border-radius:10px;display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0;white-space:nowrap}
+.stat b{font-size:16px}
+@media(max-width:560px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .bar{height:8px;background:#e8ecf2;border-radius:99px;overflow:hidden}.fill{height:100%;background:#172033;width:0}
 .filters{display:flex;gap:6px;overflow:auto;margin:12px 0}
 .filters button{white-space:nowrap;background:#edf1f6;color:#334155;padding:10px 13px;font-size:14px}
