@@ -40,6 +40,8 @@ footer{font-size:12px;color:#778195;text-align:center;margin:20px 0}
 <label class="filebtn" for="docxFile">Выбрать Word-файл (.docx)</label>
 <input id="docxFile" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
 <div id="filename" class="note" style="margin-top:9px">Файл ещё не выбран</div>
+<button class="secondary" id="deleteDraft" style="width:100%;margin-top:10px">Удалить сохранённую копию</button>
+<p class="note">Удаляет автосохранение с этого устройства. Исходный Word-файл и скачанные документы не затрагиваются.</p>
 <div id="message"></div>
 </section>
 
@@ -105,6 +107,10 @@ async function getDraft(){const db=await openDraftDB();return new Promise((resol
  const tx=db.transaction(STORE_NAME,"readonly"),req=tx.objectStore(STORE_NAME).get(DRAFT_KEY);
  req.onsuccess=()=>{db.close();resolve(req.result||null)};req.onerror=()=>{db.close();reject(req.error)};
 })}
+async function deleteDraftFromDB(){const db=await openDraftDB();return new Promise((resolve,reject)=>{
+ const tx=db.transaction(STORE_NAME,"readwrite");tx.objectStore(STORE_NAME).delete(DRAFT_KEY);
+ tx.oncomplete=()=>{db.close();resolve()};tx.onerror=()=>{db.close();reject(tx.error)};tx.onabort=()=>{db.close();reject(tx.error||new Error("Не удалось удалить сохранение"))};
+})}
 function buildDraftSnapshot(){
  if(!xmlDoc)return null;
  for(const r of records){setCellText(r.statusCell,statuses[r.rowIndex]||"");if(r.macCell)setCellText(r.macCell,r.mac||"")}
@@ -137,6 +143,19 @@ function saveBackupOnExit(){
  if(!sourceBlob||!xmlDoc)return;
  try{const snapshot=buildDraftSnapshot();writeLocalBackup(snapshot)}catch(e){}
 }
+$("deleteDraft").addEventListener("click",async()=>{
+ if(!confirm("Удалить сохранённую копию инвентаризации с этого устройства? Текущий открытый документ останется на экране, но автосохранение для него будет отключено."))return;
+ clearTimeout(autosaveTimer);
+ try{
+  localStorage.removeItem("inventory-helper-draft-v1");
+  await deleteDraftFromDB();
+  sourceBlob=null;
+  $("autosaveState").textContent="Сохранённая копия удалена · автосохранение отключено";
+  showMessage("Сохранённая копия удалена с этого устройства. Открытый документ не изменён. Чтобы снова включить автосохранение, выберите Word-файл заново.");
+ }catch(err){
+  showMessage("Не удалось полностью удалить сохранение: "+err.message+". Повторите попытку.");
+ }
+});
 window.addEventListener("pagehide",saveBackupOnExit);
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden")saveBackupOnExit()});
 function parseWorkspace(xmlText,filename,restoredStatuses={}){
