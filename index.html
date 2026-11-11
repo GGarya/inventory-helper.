@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111827">
+<title>Инвентаризация</title>
+<style>
+:root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#172033;background:#f3f5f8}
+*{box-sizing:border-box}body{margin:0;padding:16px 12px 40px;max-width:850px;margin-inline:auto}
+h1{font-size:25px;margin:8px 0 5px}.sub{color:#687386;font-size:14px;margin:0 0 18px}
+.panel{background:white;border:1px solid #e0e5ec;border-radius:16px;padding:15px;margin:12px 0;box-shadow:0 2px 8px #17203308}
+button,.filebtn{border:0;border-radius:12px;padding:13px 15px;font-size:16px;font-weight:650;cursor:pointer}
+.primary{background:#172033;color:white;width:100%}.secondary{background:#edf1f6;color:#172033}
+input[type=search]{width:100%;padding:13px;border:1px solid #d5dce6;border-radius:12px;font-size:16px;background:white}
+input[type=file]{display:none}.filebtn{display:block;text-align:center;background:#172033;color:white}
+.stats{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:14px;margin:10px 0}
+.stat{background:#f2f4f7;padding:9px 11px;border-radius:10px}
+.bar{height:8px;background:#e8ecf2;border-radius:99px;overflow:hidden}.fill{height:100%;background:#172033;width:0}
+.filters{display:flex;gap:6px;overflow:auto;margin:12px 0}
+.filters button{white-space:nowrap;background:#edf1f6;color:#334155;padding:10px 13px;font-size:14px}
+.filters button.active{background:#172033;color:white}
+.item{background:white;border:1px solid #e0e5ec;border-radius:14px;padding:13px;margin:9px 0}
+.itemtop{display:flex;gap:10px;justify-content:space-between;align-items:flex-start}
+.itemname{font-weight:700;line-height:1.35}.meta{color:#687386;font-size:13px;margin-top:5px;overflow-wrap:anywhere}
+.pill{font-size:12px;padding:5px 8px;border-radius:99px;background:#edf1f6;white-space:nowrap}
+.pill.yes{background:#e3f5e9;color:#146c35}.pill.no{background:#fde8e8;color:#a32626}
+.actions{display:flex;gap:8px;margin-top:11px}.actions button{flex:1;padding:11px;font-size:15px}
+.yesbtn{background:#e3f5e9;color:#146c35}.nobtn{background:#fde8e8;color:#a32626}.clearbtn{background:#edf1f6;color:#475569;flex:0 0 48px!important}
+.note{font-size:13px;color:#687386;line-height:1.45}.hidden{display:none!important}
+#message{font-size:14px;color:#475569;margin-top:10px;white-space:pre-wrap}
+footer{font-size:12px;color:#778195;text-align:center;margin:20px 0}
+</style>
+</head>
+<body>
+<h1>Инвентаризация</h1>
+<p class="sub">Откройте свой Word-файл, отмечайте оборудование в любом порядке и скачайте заполненную копию.</p>
+
+<section class="panel">
+<label class="filebtn" for="docxFile">Выбрать Word-файл (.docx)</label>
+<input id="docxFile" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
+<div id="filename" class="note" style="margin-top:9px">Файл ещё не выбран</div>
+<div id="message"></div>
+</section>
+
+<section id="workspace" class="hidden">
+<div class="panel">
+<div class="stats">
+<span class="stat">Всего: <b id="total">0</b></span>
+<span class="stat">Да: <b id="yesCount">0</b></span>
+<span class="stat">Нет: <b id="noCount">0</b></span>
+<span class="stat">Не проверено: <b id="blankCount">0</b></span>
+</div>
+<div class="bar"><div class="fill" id="progress"></div></div>
+<p class="note">Отметки сохраняются в этом браузере, пока вы не очистите данные сайта. Оригинальный файл не меняется.</p>
+</div>
+<div class="panel">
+<input id="search" type="search" placeholder="Поиск: номер, название, инвентарный номер">
+<div class="filters">
+<button class="active" data-filter="all">Все</button>
+<button data-filter="blank">Не проверено</button>
+<button data-filter="Да">Да</button>
+<button data-filter="Нет">Нет</button>
+</div>
+<div id="list"></div>
+</div>
+<div class="panel">
+<button class="primary" id="save">Скачать заполненный Word (.docx)</button>
+<p class="note">В документ будут записаны только выбранные значения «Да» и «Нет». Непроверенные строки останутся пустыми.</p>
+<button class="secondary" id="reset" style="width:100%;margin-top:8px">Сбросить все отметки</button>
+</div>
+</section>
+<footer>Обработка документа выполняется на вашем устройстве. Файл не загружается на сервер.</footer>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+let zipOriginal=null, xmlDoc=null, tableRows=[], records=[], statuses={}, currentFilter="all", sourceName="inventory";
+function norm(s){return (s||"").replace(/\s+/g," ").trim().toLowerCase()}
+function textOf(el){return Array.from(el.getElementsByTagNameNS("*","t")).map(x=>x.textContent).join("").replace(/\u00a0/g," ").trim()}
+function cellsOf(row){return Array.from(row.children).filter(x=>x.localName==="tc")}
+function setCellText(cell,value){
+  let ts=Array.from(cell.getElementsByTagNameNS("*","t"));
+  if(ts.length){ts[0].textContent=value; for(let i=1;i<ts.length;i++)ts[i].textContent=""; return}
+  let p=Array.from(cell.children).find(x=>x.localName==="p");
+  if(!p){p=xmlDoc.createElementNS("http://schemas.openxmlformats.org/wordprocessingml/2006/main","w:p");cell.appendChild(p)}
+  let r=xmlDoc.createElementNS("http://schemas.openxmlformats.org/wordprocessingml/2006/main","w:r");
+  let t=xmlDoc.createElementNS("http://schemas.openxmlformats.org/wordprocessingml/2006/main","w:t");
+  t.setAttribute("xml:space","preserve");t.textContent=value;r.appendChild(t);p.appendChild(r);
+}
+function showMessage(s){$("message").textContent=s}
+$("docxFile").addEventListener("change",async e=>{
+ const file=e.target.files[0]; if(!file)return;
+ try{
+  if(!window.JSZip)throw new Error("Не загрузилась библиотека для чтения Word. Проверьте интернет и обновите страницу.");
+  showMessage("Открываю документ…");
+  const buf=await file.arrayBuffer(); zipOriginal=await JSZip.loadAsync(buf);
+  const xml=await zipOriginal.file("word/document.xml").async("string");
+  xmlDoc=new DOMParser().parseFromString(xml,"application/xml");
+  if(xmlDoc.getElementsByTagName("parsererror").length)throw new Error("Не удалось прочитать структуру Word-документа.");
+  const tables=Array.from(xmlDoc.getElementsByTagNameNS("*","tbl"));
+  let found=null, headerIndex=-1,statusIndex=-1;
+  for(const table of tables){
+   const rows=Array.from(table.children).filter(x=>x.localName==="tr");
+   for(let ri=0;ri<rows.length;ri++){
+    const cs=cellsOf(rows[ri]), vals=cs.map(textOf);
+    const ci=vals.findIndex(v=>norm(v).includes("фактическое присутствие")||norm(v).includes("фактическое наличие"));
+    if(ci>=0){found=table;headerIndex=ri;statusIndex=ci;tableRows=rows;break}
+   }
+   if(found)break;
+  }
+  if(!found)throw new Error("Не найден столбец «Фактическое присутствие/отсутствие». Нужен DOCX с таблицей инвентаризации.");
+  records=[];
+  for(let ri=headerIndex+1;ri<tableRows.length;ri++){
+   const cs=cellsOf(tableRows[ri]), vals=cs.map(textOf);
+   const num=vals[0]||"";
+   if(!/^\d+$/.test(num))continue;
+   records.push({rowIndex:ri,num,type:vals[1]||"",name:vals[2]||"",inv:vals[3]||"",statusCell:cs[statusIndex]});
+  }
+  if(!records.length)throw new Error("В таблице не найдены строки оборудования с нумерацией.");
+  statuses={}; sourceName=file.name.replace(/\.docx$/i,"");
+  $("filename").textContent=file.name+" · "+records.length+" позиций";
+  $("workspace").classList.remove("hidden"); showMessage("Документ открыт. Отмечайте оборудование в любом порядке.");
+  render();
+ }catch(err){showMessage("Ошибка: "+err.message);$("workspace").classList.add("hidden")}
+});
+function updateStats(){
+ const yes=Object.values(statuses).filter(v=>v==="Да").length,no=Object.values(statuses).filter(v=>v==="Нет").length,blank=records.length-yes-no;
+ $("total").textContent=records.length;$("yesCount").textContent=yes;$("noCount").textContent=no;$("blankCount").textContent=blank;
+ $("progress").style.width=(records.length?(yes+no)/records.length*100:0)+"%";
+}
+function render(){
+ updateStats();const q=norm($("search").value),list=$("list");list.innerHTML="";
+ const visible=records.filter(r=>{
+  const s=statuses[r.rowIndex]||"";
+  const match=currentFilter==="all"||(currentFilter==="blank"?!s:s===currentFilter);
+  return match&&norm([r.num,r.type,r.name,r.inv].join(" ")).includes(q);
+ });
+ if(!visible.length){list.innerHTML='<p class="note">Ничего не найдено.</p>';return}
+ for(const r of visible){
+  const status=statuses[r.rowIndex]||"",div=document.createElement("div");div.className="item";
+  const top=document.createElement("div");top.className="itemtop";
+  const info=document.createElement("div");
+  const nm=document.createElement("div");nm.className="itemname";nm.textContent="№ "+r.num+". "+(r.name||r.type||"Оборудование");
+  const meta=document.createElement("div");meta.className="meta";meta.textContent=[r.type,r.inv].filter(Boolean).join(" · ");
+  info.append(nm,meta);
+  const pill=document.createElement("span");pill.className="pill "+(status==="Да"?"yes":status==="Нет"?"no":"");pill.textContent=status||"Не проверено";
+  top.append(info,pill);div.append(top);
+  const actions=document.createElement("div");actions.className="actions";
+  for(const [label,val,cls] of [["Да","Да","yesbtn"],["Нет","Нет","nobtn"],["×","","clearbtn"]]){
+   const b=document.createElement("button");b.textContent=label;b.className=cls;b.addEventListener("click",()=>{if(val)statuses[r.rowIndex]=val;else delete statuses[r.rowIndex];render()});actions.append(b);
+  }
+  div.append(actions);list.append(div);
+ }
+}
+$("search").addEventListener("input",render);
+document.querySelectorAll(".filters button").forEach(b=>b.addEventListener("click",()=>{
+ currentFilter=b.dataset.filter;document.querySelectorAll(".filters button").forEach(x=>x.classList.toggle("active",x===b));render();
+}));
+$("reset").addEventListener("click",()=>{if(confirm("Сбросить все отметки?")){statuses={};render()}});
+$("save").addEventListener("click",async()=>{
+ try{
+  for(const r of records)setCellText(r.statusCell,statuses[r.rowIndex]||"");
+  const serializer=new XMLSerializer();zipOriginal.file("word/document.xml",serializer.serializeToString(xmlDoc));
+  const blob=await zipOriginal.generateAsync({type:"blob",compression:"DEFLATE"});
+  const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=sourceName+"_инвентаризация.docx";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),3000);
+  showMessage("Готово: файл Word сформирован. Проверьте его перед отправкой.");
+ }catch(err){showMessage("Не удалось сохранить документ: "+err.message)}
+});
+</script>
+</body>
+</html>
