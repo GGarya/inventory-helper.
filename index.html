@@ -51,9 +51,9 @@ footer{font-size:12px;color:#778195;text-align:center;margin:20px 0}
 <div class="panel">
 <div class="stats">
 <span class="stat">Всего: <b id="total">0</b></span>
+<span class="stat">Не проверено: <b id="blankCount">0</b></span>
 <span class="stat">Да: <b id="yesCount">0</b></span>
 <span class="stat">Нет: <b id="noCount">0</b></span>
-<span class="stat">Не проверено: <b id="blankCount">0</b></span>
 </div>
 <div class="bar"><div class="fill" id="progress"></div></div>
 <div class="autosave"><span class="autosave-dot"></span><span id="autosaveState">Автосохранение включено</span></div>
@@ -296,7 +296,7 @@ $("savePdf").addEventListener("click",()=>{
   @media print{.toolbar{display:none}}
   </style></head><body><div class="toolbar"><button onclick="window.print()">Печать / Сохранить PDF</button></div>
   <h1>${escapeHtml(title)}</h1><div class="date">Сформировано: ${escapeHtml(new Date().toLocaleString("ru-RU"))}</div>
-  <div class="summary"><span>Всего: <b>${records.length}</b></span><span>Да: <b>${yes}</b></span><span>Нет: <b>${no}</b></span><span>Не проверено: <b>${blank}</b></span></div>
+  <div class="summary"><span>Всего: <b>${records.length}</b></span><span>Не проверено: <b>${blank}</b></span><span>Да: <b>${yes}</b></span><span>Нет: <b>${no}</b></span></div>
   <table><thead><tr>${headerHtml}</tr></thead><tbody>${rowsHtml}</tbody></table>
   </body></html>`);
   popup.document.close();
