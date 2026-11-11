@@ -73,6 +73,7 @@ footer{font-size:12px;color:#778195;text-align:center;margin:20px 0}
  <div><label class="fieldlabel" for="newInv">Инвентарный номер ИТ</label><input class="field" id="newInv" placeholder="IT.PC.000000"></div>
  <div><label class="fieldlabel" for="newSerial">Серийный номер</label><input class="field" id="newSerial" placeholder="Серийный номер"></div>
  <div class="wide"><label class="fieldlabel" for="newMac">MAC-адрес</label><input class="field" id="newMac" placeholder="Например, 1C1086C52AAA" autocapitalize="characters"></div>
+ <div class="wide"><label class="fieldlabel" for="newStatus">Фактическое присутствие</label><select class="field" id="newStatus"><option value="">Не отмечено</option><option value="Да">Да</option><option value="Нет">Нет</option></select></div>
 </div>
 <button class="primary" id="addEquipment" style="margin-top:12px">＋ Добавить оборудование</button>
 </div>
@@ -173,7 +174,7 @@ $("reset").addEventListener("click",()=>{if(confirm("Сбросить все о�
 $("addEquipment").addEventListener("click",()=>{
  try{
   if(!equipmentTable||!records.length)throw new Error("Сначала откройте Word-файл.");
-  const type=$("newType").value.trim(),name=$("newName").value.trim(),inv=$("newInv").value.trim(),serial=$("newSerial").value.trim(),mac=$("newMac").value.trim();
+  const type=$("newType").value.trim(),name=$("newName").value.trim(),inv=$("newInv").value.trim(),serial=$("newSerial").value.trim(),mac=$("newMac").value.trim(),status=$("newStatus").value;
   if(!type&&!name)throw new Error("Укажите хотя бы тип оборудования или название.");
   const template=records[records.length-1].cells[0].parentNode;
   const newRow=template.cloneNode(true),newCells=cellsOf(newRow);
@@ -182,7 +183,9 @@ $("addEquipment").addEventListener("click",()=>{
   equipmentTable.appendChild(newRow);
   const rowIndex=tableRows.length;tableRows.push(newRow);
   records.push({rowIndex,num:values[0],type,name,inv,serial,mac,statusCell:newCells[statusIndex],macCell:macIndex>=0?newCells[macIndex]:null,cells:newCells});
+  if(status)statuses[rowIndex]=status;
   $("newType").value=$("newName").value=$("newInv").value=$("newSerial").value=$("newMac").value="";
+  $("newStatus").value="";
   currentFilter="all";document.querySelectorAll(".filters button").forEach(x=>x.classList.toggle("active",x.dataset.filter==="all"));
   showMessage("Оборудование добавлено в список. Оно попадёт в скачанный Word-файл.");render();
  }catch(err){showMessage("Не удалось добавить оборудование: "+err.message)}
