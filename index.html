@@ -80,7 +80,9 @@ footer{font-size:12px;color:#778195;text-align:center;margin:20px 0}
 </div>
 <div class="panel">
 <button class="primary" id="save">Скачать заполненный Word (.docx)</button>
-<p class="note">В документ будут записаны только выбранные значения «Да» и «Нет». Непроверенные строки останутся пустыми.</p>
+<button class="secondary" id="savePdf" style="width:100%;margin-top:8px">Сохранить в PDF</button>
+<p class="note">PDF формируется из текущей таблицы со всеми изменениями. На iPhone в окне печати нажмите «Поделиться» → «Сохранить в Файлы».</p>
+<p class="note">В Word будут записаны выбранные значения «Да» и «Нет». Непроверенные строки останутся пустыми.</p>
 <button class="secondary" id="reset" style="width:100%;margin-top:8px">Сбросить все отметки</button>
 </div>
 </section>
@@ -90,10 +92,53 @@ footer{font-size:12px;color:#778195;text-align:center;margin:20px 0}
 const $=id=>document.getElementById(id);
 let zipOriginal=null, xmlDoc=null, tableRows=[], records=[], statuses={}, currentFilter="all", sourceName="inventory", equipmentTable=null, headerCells=[], macIndex=-1, statusIndex=-1, sourceBlob=null, autosaveTimer=null;
 const DB_NAME="inventory-helper-db", STORE_NAME="drafts", DRAFT_KEY="current";
-function openDraftDB(){return new Promise((resolve,reject)=>{const req=indexedDB.open(DB_NAME,1);req.onupgradeneeded=()=>req.result.createObjectStore(STORE_NAME);req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error)})}
-async function putDraft(data){const db=await openDraftDB();return new Promise((resolve,reject)=>{const tx=db.transaction(STORE_NAME,"readwrite");tx.objectStore(STORE_NAME).put(data,DRAFT_KEY);tx.oncomplete=()=>{db.close();resolve()};tx.onerror=()=>{db.close();reject(tx.error)}})}
-async function getDraft(){const db=await openDraftDB();return new Promise((resolve,reject)=>{const tx=db.transaction(STORE_NAME,"readonly"),req=tx.objectStore(STORE_NAME).get(DRAFT_KEY);req.onsuccess=()=>{db.close();resolve(req.result||null)};req.onerror=()=>{db.close();reject(req.error)}})}
-function scheduleAutosave(){if(!sourceBlob||!xmlDoc)return;clearTimeout(autosaveTimer);$("autosaveState").textContent="Сохранение…";autosaveTimer=setTimeout(async()=>{try{for(const r of records){setCellText(r.statusCell,statuses[r.rowIndex]||"");if(r.macCell)setCellText(r.macCell,r.mac||"")}const xmlText=new XMLSerializer().serializeToString(xmlDoc);await putDraft({fileBlob:sourceBlob,xmlText,statuses,sourceName,updatedAt:Date.now()});$("autosaveState").textContent="Сохранено автоматически · "+new Date().toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"})}catch(err){$("autosaveState").textContent="Не удалось сохранить автоматически";showMessage("Ошибка автосохранения: "+err.message)}},350)}
+function openDraftDB(){return new Promise((resolve,reject)=>{
+ const req=indexedDB.open(DB_NAME,1);
+ req.onupgradeneeded=()=>{if(!req.result.objectStoreNames.contains(STORE_NAME))req.result.createObjectStore(STORE_NAME)};
+ req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);
+})}
+async function putDraft(data){const db=await openDraftDB();return new Promise((resolve,reject)=>{
+ const tx=db.transaction(STORE_NAME,"readwrite");tx.objectStore(STORE_NAME).put(data,DRAFT_KEY);
+ tx.oncomplete=()=>{db.close();resolve()};tx.onerror=()=>{db.close();reject(tx.error)};tx.onabort=()=>{db.close();reject(tx.error||new Error("IndexedDB transaction aborted"))};
+})}
+async function getDraft(){const db=await openDraftDB();return new Promise((resolve,reject)=>{
+ const tx=db.transaction(STORE_NAME,"readonly"),req=tx.objectStore(STORE_NAME).get(DRAFT_KEY);
+ req.onsuccess=()=>{db.close();resolve(req.result||null)};req.onerror=()=>{db.close();reject(req.error)};
+})}
+function buildDraftSnapshot(){
+ if(!xmlDoc)return null;
+ for(const r of records){setCellText(r.statusCell,statuses[r.rowIndex]||"");if(r.macCell)setCellText(r.macCell,r.mac||"")}
+ const xmlText=new XMLSerializer().serializeToString(xmlDoc);
+ return {xmlText,statuses,sourceName,updatedAt:Date.now()};
+}
+function writeLocalBackup(snapshot){
+ try{localStorage.setItem("inventory-helper-draft-v1",JSON.stringify(snapshot));return true}
+ catch(err){$("autosaveState").textContent="Не удалось сохранить резервную копию";return false}
+}
+function scheduleAutosave(){
+ if(!sourceBlob||!xmlDoc)return;
+ clearTimeout(autosaveTimer);
+ try{
+  const snapshot=buildDraftSnapshot();
+  writeLocalBackup(snapshot);
+  $("autosaveState").textContent="Изменение сохранено на устройстве…";
+  autosaveTimer=setTimeout(async()=>{
+   try{
+    await putDraft({...snapshot,fileBlob:sourceBlob});
+    $("autosaveState").textContent="Сохранено на этом устройстве · "+new Date().toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"});
+   }catch(err){
+    $("autosaveState").textContent="Есть резервная копия; основное сохранение не удалось";
+    showMessage("Резервная копия сохранена в браузере. Хранилище документа: "+err.message);
+   }
+  },150);
+ }catch(err){$("autosaveState").textContent="Ошибка автосохранения";showMessage("Ошибка автосохранения: "+err.message)}
+}
+function saveBackupOnExit(){
+ if(!sourceBlob||!xmlDoc)return;
+ try{const snapshot=buildDraftSnapshot();writeLocalBackup(snapshot)}catch(e){}
+}
+window.addEventListener("pagehide",saveBackupOnExit);
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden")saveBackupOnExit()});
 function parseWorkspace(xmlText,filename,restoredStatuses={}){
  xmlDoc=new DOMParser().parseFromString(xmlText,"application/xml");
  if(xmlDoc.getElementsByTagName("parsererror").length)throw new Error("Не удалось прочитать структуру Word-документа.");
@@ -119,10 +164,31 @@ function setCellText(cell,value){
 function showMessage(s){$("message").textContent=s}
 $("docxFile").addEventListener("change",async e=>{
  const file=e.target.files[0];if(!file)return;
- try{if(!window.JSZip)throw new Error("Не загрузилась библиотека для чтения Word. Проверьте интернет и обновите страницу.");showMessage("Открываю документ…");sourceBlob=file;zipOriginal=await JSZip.loadAsync(await file.arrayBuffer());const xml=await zipOriginal.file("word/document.xml").async("string");parseWorkspace(xml,file.name,{});showMessage("Документ открыт. Отмечайте оборудование в любом порядке.");scheduleAutosave();}
+ try{if(!window.JSZip)throw new Error("Не загрузилась библиотека для чтения Word. Проверьте интернет и обновите страницу.");showMessage("Открываю документ…");sourceBlob=file;zipOriginal=await JSZip.loadAsync(await file.arrayBuffer());const xml=await zipOriginal.file("word/document.xml").async("string");
+  let local=null;try{local=JSON.parse(localStorage.getItem("inventory-helper-draft-v1")||"null")}catch(e){}
+  const pickedName=file.name.replace(/\\.docx$/i,"");
+  if(local&&local.sourceName===pickedName&&local.xmlText){zipOriginal.file("word/document.xml",local.xmlText);parseWorkspace(local.xmlText,file.name,local.statuses||{});showMessage("Найдена и восстановлена резервная копия этой инвентаризации.");}
+  else{parseWorkspace(xml,file.name,{});showMessage("Документ открыт. Отмечайте оборудование в любом порядке.");}
+  scheduleAutosave();}
  catch(err){showMessage("Ошибка: "+err.message);$("workspace").classList.add("hidden")}
 });
-async function restoreDraft(){try{const draft=await getDraft();if(!draft||!window.JSZip)return;sourceBlob=draft.fileBlob;zipOriginal=await JSZip.loadAsync(sourceBlob);zipOriginal.file("word/document.xml",draft.xmlText);parseWorkspace(draft.xmlText,(draft.sourceName||"inventory")+".docx",draft.statuses||{});$("autosaveState").textContent="Восстановлена предыдущая работа · "+new Date(draft.updatedAt).toLocaleString("ru-RU");showMessage("Предыдущая инвентаризация восстановлена. Можно продолжать работу.");}catch(err){showMessage("Не удалось восстановить автосохранение: "+err.message)}}
+async function restoreDraft(){
+ try{
+  if(!window.JSZip)return;
+  let draft=null,local=null;
+  try{local=JSON.parse(localStorage.getItem("inventory-helper-draft-v1")||"null")}catch(e){}
+  try{draft=await getDraft()}catch(e){}
+  if(!draft&&local){showMessage("Найдена резервная копия изменений, но исходный Word-файл не найден. Выберите исходный DOCX ещё раз.");window.__inventoryLocalBackup=local;return}
+  if(!draft)return;
+  const snap=local&&(!draft.updatedAt||local.updatedAt>draft.updatedAt)?local:draft;
+  sourceBlob=draft.fileBlob;
+  zipOriginal=await JSZip.loadAsync(sourceBlob);
+  zipOriginal.file("word/document.xml",snap.xmlText);
+  parseWorkspace(snap.xmlText,(snap.sourceName||"inventory")+".docx",snap.statuses||{});
+  $("autosaveState").textContent="Восстановлено · "+new Date(snap.updatedAt).toLocaleString("ru-RU");
+  showMessage("Предыдущая инвентаризация восстановлена. Можно продолжать работу.");
+ }catch(err){showMessage("Не удалось восстановить автосохранение: "+err.message)}
+}
 restoreDraft();
 
 function updateStats(){
@@ -179,6 +245,45 @@ $("addEquipment").addEventListener("click",()=>{
   showMessage("Оборудование добавлено в список. Оно попадёт в скачанный Word-файл.");render();scheduleAutosave();
  }catch(err){showMessage("Не удалось добавить оборудование: "+err.message)}
 });
+function escapeHtml(value){return String(value??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;", "'":"&#39;"}[ch]));}
+$("savePdf").addEventListener("click",()=>{
+ try{
+  if(!xmlDoc||!records.length)throw new Error("Сначала откройте Word-файл.");
+  // Apply the latest values to the document model before building the PDF view.
+  for(const r of records){setCellText(r.statusCell,statuses[r.rowIndex]||"");if(r.macCell)setCellText(r.macCell,r.mac||"");}
+  const headers=headerCells.map(textOf);
+  const body=records.map(r=>r.cells.map(c=>textOf(c)));
+  const popup=window.open("","_blank");
+  if(!popup)throw new Error("Браузер заблокировал новое окно. Разрешите всплывающие окна для этого сайта и повторите.");
+  const yes=Object.values(statuses).filter(v=>v==="Да").length;
+  const no=Object.values(statuses).filter(v=>v==="Нет").length;
+  const blank=records.length-yes-no;
+  const headerHtml=headers.map(v=>`<th>${escapeHtml(v)}</th>`).join("");
+  const rowsHtml=body.map(row=>`<tr>${row.map((v,i)=>`<td>${escapeHtml(v)}</td>`).join("")}</tr>`).join("");
+  const title=sourceName+" — инвентаризация";
+  popup.document.open();
+  popup.document.write(`<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)}</title><style>
+  @page{size:A4 landscape;margin:10mm}
+  *{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#111;margin:0;font-size:9px}
+  h1{font-size:16px;margin:0 0 5px} .date{font-size:9px;color:#444;margin-bottom:8px}
+  .summary{display:flex;gap:16px;margin:0 0 10px;font-size:10px}
+  table{width:100%;border-collapse:collapse;table-layout:fixed}
+  th,td{border:1px solid #777;padding:4px 3px;vertical-align:top;overflow-wrap:anywhere;word-break:break-word}
+  th{background:#e9edf2;font-weight:bold;text-align:left}
+  thead{display:table-header-group}tr{break-inside:avoid;page-break-inside:avoid}
+  @media screen{body{padding:16px} .toolbar{position:sticky;top:0;background:#fff;padding:8px 0 12px} .toolbar button{padding:10px 16px;font-size:15px}}
+  @media print{.toolbar{display:none}}
+  </style></head><body><div class="toolbar"><button onclick="window.print()">Печать / Сохранить PDF</button></div>
+  <h1>${escapeHtml(title)}</h1><div class="date">Сформировано: ${escapeHtml(new Date().toLocaleString("ru-RU"))}</div>
+  <div class="summary"><span>Всего: <b>${records.length}</b></span><span>Да: <b>${yes}</b></span><span>Нет: <b>${no}</b></span><span>Не проверено: <b>${blank}</b></span></div>
+  <table><thead><tr>${headerHtml}</tr></thead><tbody>${rowsHtml}</tbody></table>
+  </body></html>`);
+  popup.document.close();
+  setTimeout(()=>{try{popup.focus();popup.print()}catch(e){}},700);
+  showMessage("Открылся макет для PDF. В окне печати выберите сохранение в PDF.");
+ }catch(err){showMessage("Не удалось подготовить PDF: "+err.message)}
+});
+
 $("save").addEventListener("click",async()=>{
  try{
   for(const r of records){setCellText(r.statusCell,statuses[r.rowIndex]||"");if(r.macCell)setCellText(r.macCell,r.mac||"");}
