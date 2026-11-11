@@ -27,7 +27,7 @@ input[type=file]{display:none}.filebtn{display:block;text-align:center;backgroun
 .pill.yes{background:#e3f5e9;color:#146c35}.pill.no{background:#fde8e8;color:#a32626}
 .actions{display:flex;gap:8px;margin-top:11px}.actions button{flex:1;padding:11px;font-size:15px}
 .yesbtn{background:#e3f5e9;color:#146c35}.nobtn{background:#fde8e8;color:#a32626}.clearbtn{background:#edf1f6;color:#475569;flex:0 0 48px!important}
-.note{font-size:13px;color:#687386;line-height:1.45}.hidden{display:none!important}
+.note{font-size:13px;color:#687386;line-height:1.45}.fieldlabel{display:block;font-size:13px;font-weight:650;color:#475569;margin:9px 0 5px}.field{width:100%;padding:11px 12px;border:1px solid #d5dce6;border-radius:10px;font-size:16px;background:#fff;color:#172033}.macedit{margin-top:10px}.addgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.addgrid .wide{grid-column:1/-1}.hidden{display:none!important}
 #message{font-size:14px;color:#475569;margin-top:10px;white-space:pre-wrap}
 footer{font-size:12px;color:#778195;text-align:center;margin:20px 0}
 </style>
@@ -65,6 +65,18 @@ footer{font-size:12px;color:#778195;text-align:center;margin:20px 0}
 <div id="list"></div>
 </div>
 <div class="panel">
+<h3 style="margin:0 0 8px">Добавить оборудование</h3>
+<p class="note">Новая позиция будет добавлена в конец таблицы Word.</p>
+<div class="addgrid">
+ <div><label class="fieldlabel" for="newType">Тип оборудования</label><input class="field" id="newType" placeholder="Например, IP телефон"></div>
+ <div><label class="fieldlabel" for="newName">Название / модель</label><input class="field" id="newName" placeholder="Например, Cisco 3905"></div>
+ <div><label class="fieldlabel" for="newInv">Инвентарный номер ИТ</label><input class="field" id="newInv" placeholder="IT.PC.000000"></div>
+ <div><label class="fieldlabel" for="newSerial">Серийный номер</label><input class="field" id="newSerial" placeholder="Серийный номер"></div>
+ <div class="wide"><label class="fieldlabel" for="newMac">MAC-адрес</label><input class="field" id="newMac" placeholder="Например, 1C1086C52AAA" autocapitalize="characters"></div>
+</div>
+<button class="primary" id="addEquipment" style="margin-top:12px">＋ Добавить оборудование</button>
+</div>
+<div class="panel">
 <button class="primary" id="save">Скачать заполненный Word (.docx)</button>
 <p class="note">В документ будут записаны только выбранные значения «Да» и «Нет». Непроверенные строки останутся пустыми.</p>
 <button class="secondary" id="reset" style="width:100%;margin-top:8px">Сбросить все отметки</button>
@@ -74,7 +86,7 @@ footer{font-size:12px;color:#778195;text-align:center;margin:20px 0}
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script>
 const $=id=>document.getElementById(id);
-let zipOriginal=null, xmlDoc=null, tableRows=[], records=[], statuses={}, currentFilter="all", sourceName="inventory";
+let zipOriginal=null, xmlDoc=null, tableRows=[], records=[], statuses={}, currentFilter="all", sourceName="inventory", equipmentTable=null, headerCells=[], macIndex=-1, statusIndex=-1;
 function norm(s){return (s||"").replace(/\s+/g," ").trim().toLowerCase()}
 function textOf(el){return Array.from(el.getElementsByTagNameNS("*","t")).map(x=>x.textContent).join("").replace(/\u00a0/g," ").trim()}
 function cellsOf(row){return Array.from(row.children).filter(x=>x.localName==="tc")}
@@ -98,13 +110,13 @@ $("docxFile").addEventListener("change",async e=>{
   xmlDoc=new DOMParser().parseFromString(xml,"application/xml");
   if(xmlDoc.getElementsByTagName("parsererror").length)throw new Error("Не удалось прочитать структуру Word-документа.");
   const tables=Array.from(xmlDoc.getElementsByTagNameNS("*","tbl"));
-  let found=null, headerIndex=-1,statusIndex=-1;
+  let found=null, headerIndex=-1;
   for(const table of tables){
    const rows=Array.from(table.children).filter(x=>x.localName==="tr");
    for(let ri=0;ri<rows.length;ri++){
     const cs=cellsOf(rows[ri]), vals=cs.map(textOf);
     const ci=vals.findIndex(v=>norm(v).includes("фактическое присутствие")||norm(v).includes("фактическое наличие"));
-    if(ci>=0){found=table;headerIndex=ri;statusIndex=ci;tableRows=rows;break}
+    if(ci>=0){found=table;equipmentTable=table;headerIndex=ri;statusIndex=ci;macIndex=vals.findIndex(v=>norm(v).includes("mac адрес")||norm(v).includes("mac-адрес"));headerCells=cs;tableRows=rows;break}
    }
    if(found)break;
   }
@@ -114,7 +126,7 @@ $("docxFile").addEventListener("change",async e=>{
    const cs=cellsOf(tableRows[ri]), vals=cs.map(textOf);
    const num=vals[0]||"";
    if(!/^\d+$/.test(num))continue;
-   records.push({rowIndex:ri,num,type:vals[1]||"",name:vals[2]||"",inv:vals[3]||"",statusCell:cs[statusIndex]});
+   records.push({rowIndex:ri,num,type:vals[1]||"",name:vals[2]||"",inv:vals[3]||"",serial:vals[4]||"",mac:macIndex>=0?(vals[macIndex]||""):"",statusCell:cs[statusIndex],macCell:macIndex>=0?cs[macIndex]:null,cells:cs});
   }
   if(!records.length)throw new Error("В таблице не найдены строки оборудования с нумерацией.");
   statuses={}; sourceName=file.name.replace(/\.docx$/i,"");
@@ -133,7 +145,7 @@ function render(){
  const visible=records.filter(r=>{
   const s=statuses[r.rowIndex]||"";
   const match=currentFilter==="all"||(currentFilter==="blank"?!s:s===currentFilter);
-  return match&&norm([r.num,r.type,r.name,r.inv].join(" ")).includes(q);
+  return match&&norm([r.num,r.type,r.name,r.inv,r.serial,r.mac].join(" ")).includes(q);
  });
  if(!visible.length){list.innerHTML='<p class="note">Ничего не найдено.</p>';return}
  for(const r of visible){
@@ -141,8 +153,9 @@ function render(){
   const top=document.createElement("div");top.className="itemtop";
   const info=document.createElement("div");
   const nm=document.createElement("div");nm.className="itemname";nm.textContent="№ "+r.num+". "+(r.name||r.type||"Оборудование");
-  const meta=document.createElement("div");meta.className="meta";meta.textContent=[r.type,r.inv].filter(Boolean).join(" · ");
+  const meta=document.createElement("div");meta.className="meta";meta.textContent=[r.type,r.inv,r.serial].filter(Boolean).join(" · ");
   info.append(nm,meta);
+  if(r.macCell){const macWrap=document.createElement("div");macWrap.className="macedit";const lab=document.createElement("label");lab.className="fieldlabel";lab.textContent="MAC-адрес";const inp=document.createElement("input");inp.className="field";inp.type="text";inp.autocapitalize="characters";inp.value=r.mac||"";inp.placeholder="Введите или исправьте MAC-адрес";inp.addEventListener("input",()=>{r.mac=inp.value});macWrap.append(lab,inp);info.append(macWrap)}
   const pill=document.createElement("span");pill.className="pill "+(status==="Да"?"yes":status==="Нет"?"no":"");pill.textContent=status||"Не проверено";
   top.append(info,pill);div.append(top);
   const actions=document.createElement("div");actions.className="actions";
@@ -157,9 +170,26 @@ document.querySelectorAll(".filters button").forEach(b=>b.addEventListener("clic
  currentFilter=b.dataset.filter;document.querySelectorAll(".filters button").forEach(x=>x.classList.toggle("active",x===b));render();
 }));
 $("reset").addEventListener("click",()=>{if(confirm("Сбросить все отметки?")){statuses={};render()}});
+$("addEquipment").addEventListener("click",()=>{
+ try{
+  if(!equipmentTable||!records.length)throw new Error("Сначала откройте Word-файл.");
+  const type=$("newType").value.trim(),name=$("newName").value.trim(),inv=$("newInv").value.trim(),serial=$("newSerial").value.trim(),mac=$("newMac").value.trim();
+  if(!type&&!name)throw new Error("Укажите хотя бы тип оборудования или название.");
+  const template=records[records.length-1].cells[0].parentNode;
+  const newRow=template.cloneNode(true),newCells=cellsOf(newRow);
+  const values=[String(records.length+1),type,name,inv,serial,mac,"","",""];
+  for(let i=0;i<newCells.length;i++)setCellText(newCells[i],values[i]||"");
+  equipmentTable.appendChild(newRow);
+  const rowIndex=tableRows.length;tableRows.push(newRow);
+  records.push({rowIndex,num:values[0],type,name,inv,serial,mac,statusCell:newCells[statusIndex],macCell:macIndex>=0?newCells[macIndex]:null,cells:newCells});
+  $("newType").value=$("newName").value=$("newInv").value=$("newSerial").value=$("newMac").value="";
+  currentFilter="all";document.querySelectorAll(".filters button").forEach(x=>x.classList.toggle("active",x.dataset.filter==="all"));
+  showMessage("Оборудование добавлено в список. Оно попадёт в скачанный Word-файл.");render();
+ }catch(err){showMessage("Не удалось добавить оборудование: "+err.message)}
+});
 $("save").addEventListener("click",async()=>{
  try{
-  for(const r of records)setCellText(r.statusCell,statuses[r.rowIndex]||"");
+  for(const r of records){setCellText(r.statusCell,statuses[r.rowIndex]||"");if(r.macCell)setCellText(r.macCell,r.mac||"");}
   const serializer=new XMLSerializer();zipOriginal.file("word/document.xml",serializer.serializeToString(xmlDoc));
   const blob=await zipOriginal.generateAsync({type:"blob",compression:"DEFLATE"});
   const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=sourceName+"_инвентаризация.docx";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),3000);
