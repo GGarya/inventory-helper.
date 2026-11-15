@@ -208,10 +208,17 @@ footer{font-size:12px;color:#778195;text-align:center;margin:20px 0}
    button.disabled=true;
    loginStatus.textContent="Переходим к входу через Google…";
    try{
-    await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
     const provider=new firebase.auth.GoogleAuthProvider();
     provider.setCustomParameters({prompt:"select_account"});
-    await auth.signInWithRedirect(provider);
+    // Вызов popup выполняется сразу в обработчике нажатия, без await до него:
+    // Safari на iPhone иначе теряет пользовательский жест и блокирует окно.
+    const signInPromise=auth.signInWithPopup(provider);
+    signInPromise.then(async result=>{
+     if(result && result.user) await handleUser(result.user);
+    }).catch(e=>{
+     loginStatus.textContent="Ошибка входа Google ("+(e.code||e.message)+").";
+     button.disabled=false;
+    });
    }catch(e){
     loginStatus.textContent="Ошибка входа Google ("+(e.code||e.message)+").";
     button.disabled=false;
