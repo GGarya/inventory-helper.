@@ -196,7 +196,7 @@ footer{font-size:12px;color:#778195;text-align:center;margin:20px 0}
   showStats(false);
   try{
    await trackVisitor(user);
-   loginStatus.textContent="Статистика доступна только администратору.";
+   loginStatus.textContent="";
   }catch(e){
    loginStatus.textContent="Учёт посещений временно недоступен ("+(e.code||e.message)+").";
   }
