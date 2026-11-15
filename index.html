@@ -11,6 +11,17 @@
 h1{font-size:25px;margin:8px 0 5px}.sub{color:#687386;font-size:14px;margin:0 0 18px}
 .topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 4px}.topbar h1{margin:8px 0 5px}.admin-login{margin-left:auto;flex:0 0 auto}.admin-login button{background:#edf1f6;color:#475569;border:1px solid #dfe5ed;border-radius:999px;padding:8px 12px;font-size:12px;font-weight:600;white-space:nowrap}.login-status{font-size:11px;color:#778195;text-align:right;min-height:0;margin:0 2px 8px}
 .panel{background:white;border:1px solid #e0e5ec;border-radius:16px;padding:15px;margin:12px 0;box-shadow:0 2px 8px #17203308}
+
+.help{background:#fff;border:1px solid #e0e5ec;border-radius:14px;margin:12px 0;padding:0 14px;box-shadow:0 2px 8px #17203308}
+.help summary{cursor:pointer;list-style:none;font-weight:700;padding:14px 24px 14px 0;position:relative}
+.help summary::-webkit-details-marker{display:none}
+.help summary:after{content:"＋";position:absolute;right:2px;top:12px;color:#475569;font-size:19px;font-weight:400}
+.help[open] summary:after{content:"−"}
+.help-content{padding:0 0 14px;color:#475569;font-size:13px;line-height:1.55}
+.help-content ol{padding-left:20px;margin:4px 0 10px}
+.help-content li{margin:6px 0}
+.help-content strong{color:#172033}
+.help-tip{border-top:1px solid #e5e7eb;padding-top:10px;margin-top:10px}
 button,.filebtn{border:0;border-radius:12px;padding:13px 15px;font-size:16px;font-weight:650;cursor:pointer}
 .primary{background:#172033;color:white;width:100%}.secondary{background:#edf1f6;color:#172033}
 input[type=search]{width:100%;padding:13px;border:1px solid #d5dce6;border-radius:12px;font-size:16px;background:white}
@@ -53,6 +64,22 @@ footer{font-size:12px;color:#778195;text-align:center;margin:20px 0}
 </div>
 <div id="loginStatus" class="login-status" aria-live="polite"></div>
 <p class="sub">Откройте свой Word-файл, отмечайте оборудование в любом порядке и скачайте заполненную копию.</p>
+<details class="help">
+ <summary>Как пользоваться?</summary>
+ <div class="help-content">
+  <ol>
+   <li><strong>Откройте документ.</strong> Нажмите «Выбрать Word-файл (.docx)» и выберите исходный файл инвентаризации в формате DOCX. Дождитесь загрузки списка оборудования.</li>
+   <li><strong>Проверьте каждую позицию.</strong> Найдите оборудование в списке и нажмите «Да», если оно фактически присутствует, или «Нет», если его нет. Кнопка «×» снимает отметку, если вы ошиблись или хотите проверить позицию позже.</li>
+   <li><strong>Используйте поиск и фильтры.</strong> В строке поиска можно искать по номеру, названию, инвентарному или серийному номеру. Кнопки «Все», «Не проверено», «Да» и «Нет» показывают только нужные позиции.</li>
+   <li><strong>Исправляйте MAC-адрес.</strong> Если у позиции есть поле MAC-адрес, его можно отредактировать прямо в карточке оборудования.</li>
+   <li><strong>Добавляйте оборудование.</strong> В блоке «Добавить оборудование» заполните известные поля. Укажите хотя бы тип оборудования или название, затем нажмите «Добавить оборудование». Новая строка попадёт в конец таблицы Word.</li>
+   <li><strong>Скачайте результат.</strong> Нажмите «Скачать заполненный Word (.docx)». В копию будут внесены отметки «Да» и «Нет»; непроверенные позиции останутся пустыми. Исходный файл не перезаписывается.</li>
+  </ol>
+  <p><strong>Статистика сверху списка</strong> показывает общее количество позиций, сколько ещё не проверено и сколько отмечено как «Да» или «Нет». Полоса показывает ход проверки.</p>
+  <p><strong>Автосохранение</strong> включено автоматически. Можно закрыть страницу и продолжить позже в том же браузере на том же устройстве. При повторном открытии выберите тот же исходный Word-файл, если сайт попросит его.</p>
+  <p class="help-tip"><strong>Важно:</strong> «Сбросить все отметки» очищает результаты проверки в открытом документе. «Удалить сохранённую копию» удаляет автосохранение с этого устройства. Эти действия не изменяют уже скачанные Word-файлы. Не нажимайте их, если хотите продолжить текущую работу.</p>
+ </div>
+</details>
 <section id="adminStatsPanel" class="hidden" aria-label="Статистика пользователей">
  <div class="user-stats">
   <div class="user-stat"><span>Уникальных пользователей</span><b id="usersTotal">—</b></div>
@@ -474,7 +501,8 @@ $("save").addEventListener("click",async()=>{
  try{
   for(const r of records){setCellText(r.statusCell,statuses[r.rowIndex]||"");if(r.macCell)setCellText(r.macCell,r.mac||"");}
   const serializer=new XMLSerializer();zipOriginal.file("word/document.xml",serializer.serializeToString(xmlDoc));
-  const blob=await zipOriginal.generateAsync({type:"blob",compression:"DEFLATE"});
+  const zipBlob=await zipOriginal.generateAsync({type:"blob",compression:"DEFLATE"});
+  const blob=new Blob([zipBlob],{type:"application/vnd.openxmlformats-officedocument.wordprocessingml.document"});
   const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=sourceName+"_инвентаризация.docx";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),3000);
   showMessage("Готово: файл Word сформирован. Проверьте его перед отправкой.");
  }catch(err){showMessage("Не удалось сохранить документ: "+err.message)}
