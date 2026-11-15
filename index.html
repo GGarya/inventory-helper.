@@ -145,6 +145,15 @@ footer{font-size:12px;color:#778195;text-align:center;margin:20px 0}
  const onlineEl=document.getElementById("usersOnline");
  const todayEl=document.getElementById("visitsToday");
  let db,auth,statsListenersStarted=false,initializing=true,lastHandledUid=null;
+ let activeOnlineConnection=null;
+
+ async function stopTrackingVisitor(){
+  if(!activeOnlineConnection)return;
+  const connection=activeOnlineConnection;
+  activeOnlineConnection=null;
+  try{await connection.onDisconnect().cancel()}catch(e){}
+  try{await connection.remove()}catch(e){}
+ }
 
  function dateKey(){
   const d=new Date();
@@ -157,9 +166,11 @@ footer{font-size:12px;color:#778195;text-align:center;margin:20px 0}
  function countChildren(s){let n=0;s.forEach(()=>n++);return n;}
  async function trackVisitor(user){
   const uid=user.uid;
+  await stopTrackingVisitor();
   await db.ref("knownUsers/"+uid).set(true);
   await db.ref("dailyVisitors/"+dateKey()+"/"+uid).set(true);
   const connection=db.ref("online/"+uid).push();
+  activeOnlineConnection=connection;
   await connection.onDisconnect().remove();
   await connection.set({connectedAt:firebase.database.ServerValue.TIMESTAMP});
  }
@@ -175,10 +186,15 @@ footer{font-size:12px;color:#778195;text-align:center;margin:20px 0}
   statusEl.textContent="Вход выполнен: "+ADMIN_EMAIL+". Статистика обновляется автоматически.";
  }
  async function handleUser(user){
-  if(!user){showStats(false);return;}
+  if(!user){
+   await stopTrackingVisitor();
+   showStats(false);
+   return;
+  }
   if(lastHandledUid===user.uid)return;
   lastHandledUid=user.uid;
   if(!user.isAnonymous){
+   await stopTrackingVisitor();
    if((user.email||"").toLowerCase()===ADMIN_EMAIL){
     showStats(true);
     statusEl.textContent="Google-вход подтверждён. Проверяем доступ к статистике…";
@@ -229,6 +245,7 @@ footer{font-size:12px;color:#778195;text-align:center;margin:20px 0}
 
   document.getElementById("adminLogout").addEventListener("click",async()=>{
    try{
+    await stopTrackingVisitor();
     statsListenersStarted=false;
     db.ref("knownUsers").off();
     db.ref("online").off();
