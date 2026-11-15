@@ -54,9 +54,9 @@ footer{font-size:12px;color:#778195;text-align:center;margin:20px 0}
 <p class="sub">Откройте свой Word-файл, отмечайте оборудование в любом порядке и скачайте заполненную копию.</p>
 <section id="adminStatsPanel" class="hidden" aria-label="Статистика пользователей">
  <div class="user-stats">
-  <div class="user-stat"><span>Всего пользователей</span><b id="usersTotal">—</b></div>
-  <div class="user-stat"><span>Сейчас онлайн</span><b id="usersOnline">—</b></div>
-  <div class="user-stat"><span>Посещений сегодня</span><b id="visitsToday">—</b></div>
+  <div class="user-stat"><span>Уникальных браузеров</span><b id="usersTotal">—</b></div>
+  <div class="user-stat"><span>Браузеров онлайн</span><b id="usersOnline">—</b></div>
+  <div class="user-stat"><span>Браузеров сегодня</span><b id="visitsToday">—</b></div>
  </div>
  <div style="display:flex;justify-content:flex-end">
   <button id="adminLogout" class="secondary" style="font-size:13px;padding:8px 12px">Выйти из панели</button>
@@ -144,17 +144,25 @@ footer{font-size:12px;color:#778195;text-align:center;margin:20px 0}
  const totalEl=document.getElementById("usersTotal");
  const onlineEl=document.getElementById("usersOnline");
  const todayEl=document.getElementById("visitsToday");
- let db,auth,statsListenersStarted=false,initializing=true,lastHandledUid=null;
- let activeOnlineConnection=null;
+ let db,auth,statsListenersStarted=false,lastHandledUid=null;
+ let anonymousSignInInProgress=false,presenceListenerStarted=false,activeConnectionRef=null;
 
- async function stopTrackingVisitor(){
-  if(!activeOnlineConnection)return;
-  const connection=activeOnlineConnection;
-  activeOnlineConnection=null;
-  try{await connection.onDisconnect().cancel()}catch(e){}
-  try{await connection.remove()}catch(e){}
+ // Один постоянный идентификатор на браузер. Он не меняется при входе/выходе из Google.
+ function getVisitorId(){
+  const key="inventory-helper-visitor-id-v1";
+  try{
+   let id=localStorage.getItem(key);
+   if(!id){
+    id=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():"v-"+Date.now().toString(36)+"-"+Math.random().toString(36).slice(2);
+    localStorage.setItem(key,id);
+   }
+   return id;
+  }catch(e){
+   // Резервный режим для браузеров с полностью отключённым хранилищем.
+   return "session-"+(window.crypto&&crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2));
+  }
  }
-
+ const visitorId=getVisitorId();
  function dateKey(){
   const d=new Date();
   return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
@@ -164,71 +172,81 @@ footer{font-size:12px;color:#778195;text-align:center;margin:20px 0}
   loginPanel.classList.toggle("hidden",show);
  }
  function countChildren(s){let n=0;s.forEach(()=>n++);return n;}
- function getStableVisitorId(){
-  const key="inventory-helper-visitor-id-v1";
-  let id=localStorage.getItem(key);
-  if(!id){
-   id=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():("v-"+Date.now().toString(36)+"-"+Math.random().toString(36).slice(2));
-   localStorage.setItem(key,id);
-  }
-  return id;
+
+ async function trackVisitor(){
+  // Считаем браузер, а не Firebase UID: Google-вход не создаёт нового посетителя.
+  await Promise.all([
+   db.ref("knownUsers/"+visitorId).set(true),
+   db.ref("dailyVisitors/"+dateKey()+"/"+visitorId).set(true)
+  ]);
+  startPresenceTracking();
  }
- async function trackVisitor(user){
-  const uid=user.uid;
-  await stopTrackingVisitor();
-  await db.ref("knownUsers/"+uid).set(true);
-  await db.ref("dailyVisitors/"+dateKey()+"/"+uid).set(true);
-  // Онлайн учитывается по постоянному ID браузера, а не по меняющемуся анонимному UID.
-  // Отдельные вкладки имеют свои connection-записи, но родитель браузера считается один раз.
-  const visitorId=getStableVisitorId();
-  const connection=db.ref("online/"+visitorId).push();
-  activeOnlineConnection=connection;
-  await connection.onDisconnect().remove();
-  await connection.set({connectedAt:firebase.database.ServerValue.TIMESTAMP});
+
+ function startPresenceTracking(){
+  if(presenceListenerStarted)return;
+  presenceListenerStarted=true;
+  // Каждая вкладка создаёт собственное подключение под одним ID браузера.
+  // В статистике родительский узел браузера считается только один раз.
+  db.ref(".info/connected").on("value",async snapshot=>{
+   if(snapshot.val()===true){
+    if(activeConnectionRef)return;
+    const connection=db.ref("online/"+visitorId).push();
+    activeConnectionRef=connection;
+    try{
+     await connection.onDisconnect().remove();
+     await connection.set({connectedAt:firebase.database.ServerValue.TIMESTAMP});
+    }catch(e){
+     if(activeConnectionRef===connection)activeConnectionRef=null;
+     loginStatus.textContent="Не удалось обновить онлайн-статус ("+(e.code||e.message)+").";
+    }
+   }else{
+    // При потере связи сервер сам удалит запись через onDisconnect.
+    activeConnectionRef=null;
+   }
+  });
  }
+
  function startAdminStats(){
   if(statsListenersStarted)return;
   statsListenersStarted=true;
   db.ref("knownUsers").on("value",s=>totalEl.textContent=countChildren(s).toLocaleString("ru-RU"),e=>statusEl.textContent="Нет доступа к статистике ("+e.code+"). Проверьте правила базы.");
   db.ref("online").on("value",s=>{
-   let n=0;s.forEach(userNode=>{if(userNode.hasChildren())n++;});
+   let n=0;s.forEach(browserNode=>{if(browserNode.hasChildren())n++;});
    onlineEl.textContent=n.toLocaleString("ru-RU");
   },e=>statusEl.textContent="Нет доступа к онлайн-статистике ("+e.code+").");
   db.ref("dailyVisitors/"+dateKey()).on("value",s=>todayEl.textContent=countChildren(s).toLocaleString("ru-RU"),e=>statusEl.textContent="Нет доступа к посещениям ("+e.code+").");
-  statusEl.textContent="Вход выполнен: "+ADMIN_EMAIL+". Статистика обновляется автоматически.";
+  statusEl.textContent="Вход администратора подтверждён. Статистика обновляется автоматически.";
  }
+
  async function handleUser(user){
-  if(!user){
-   await stopTrackingVisitor();
-   showStats(false);
-   return;
-  }
+  if(!user){showStats(false);lastHandledUid=null;return;}
   if(lastHandledUid===user.uid)return;
   lastHandledUid=user.uid;
+  try{await trackVisitor();}catch(e){loginStatus.textContent="Учёт посещений временно недоступен ("+(e.code||e.message)+").";}
   if(!user.isAnonymous){
-   await stopTrackingVisitor();
-   if((user.email||"").toLowerCase()===ADMIN_EMAIL){
+   if((user.email||"").toLowerCase()===ADMIN_EMAIL.toLowerCase()){
     showStats(true);
     statusEl.textContent="Google-вход подтверждён. Проверяем доступ к статистике…";
     startAdminStats();
    }else{
     showStats(false);
     loginStatus.textContent="Доступ закрыт: выбран другой Google-аккаунт.";
-    await auth.signOut();
-    lastHandledUid=null;
-    const anon=await auth.signInAnonymously();
-    await handleUser(anon.user);
+    try{await auth.signOut();}catch(e){loginStatus.textContent="Не удалось завершить вход: "+(e.code||e.message);}
    }
    return;
   }
   showStats(false);
-  try{
-   await trackVisitor(user);
-   loginStatus.textContent="";
-  }catch(e){
-   loginStatus.textContent="Учёт посещений временно недоступен ("+(e.code||e.message)+").";
-  }
+  loginStatus.textContent="";
  }
+
+ async function ensureAnonymousUser(){
+  if(anonymousSignInInProgress||auth.currentUser)return;
+  anonymousSignInInProgress=true;
+  try{const result=await auth.signInAnonymously();if(result&&result.user)await handleUser(result.user);}
+  catch(e){loginStatus.textContent="Ошибка подключения Firebase ("+(e.code||e.message)+").";}
+  finally{anonymousSignInInProgress=false;}
+ }
+
  try{
   if(!firebase.apps.length)firebase.initializeApp(firebaseConfig);
   auth=firebase.auth();db=firebase.database();
@@ -236,28 +254,21 @@ footer{font-size:12px;color:#778195;text-align:center;margin:20px 0}
   document.getElementById("adminLogin").addEventListener("click",async()=>{
    const button=document.getElementById("adminLogin");
    button.disabled=true;
-   loginStatus.textContent="Переходим к входу через Google…";
+   loginStatus.textContent="Открываем окно входа Google…";
    try{
     const provider=new firebase.auth.GoogleAuthProvider();
     provider.setCustomParameters({prompt:"select_account"});
-    // Вызов popup выполняется сразу в обработчике нажатия, без await до него:
-    // Safari на iPhone иначе теряет пользовательский жест и блокирует окно.
-    const signInPromise=auth.signInWithPopup(provider);
-    signInPromise.then(async result=>{
-     if(result && result.user) await handleUser(result.user);
-    }).catch(e=>{
-     loginStatus.textContent="Ошибка входа Google ("+(e.code||e.message)+").";
-     button.disabled=false;
-    });
+    // Popup используется и на iPhone, и на компьютере. Redirect-проверка не нужна.
+    await auth.signInWithPopup(provider);
    }catch(e){
-    loginStatus.textContent="Ошибка входа Google ("+(e.code||e.message)+").";
+    loginStatus.textContent="Ошибка входа Google ("+(e.code||e.message)+"). Если окно не открылось, разрешите всплывающие окна для сайта.";
+   }finally{
     button.disabled=false;
    }
   });
 
   document.getElementById("adminLogout").addEventListener("click",async()=>{
    try{
-    await stopTrackingVisitor();
     statsListenersStarted=false;
     db.ref("knownUsers").off();
     db.ref("online").off();
@@ -266,46 +277,17 @@ footer{font-size:12px;color:#778195;text-align:center;margin:20px 0}
     lastHandledUid=null;
     showStats(false);
     loginStatus.textContent="Вы вышли из панели администратора.";
-    const anon=await auth.signInAnonymously();
-    await handleUser(anon.user);
+    await ensureAnonymousUser();
    }catch(e){statusEl.textContent="Ошибка выхода: "+(e.code||e.message);}
   });
 
-  (async()=>{
-   let redirectUser=null;
-   try{
-    const result=await auth.getRedirectResult();
-    if(result && result.user)redirectUser=result.user;
-   }catch(e){
-    loginStatus.textContent="Не удалось завершить вход Google ("+(e.code||e.message)+").";
-   }
-   const currentUser=redirectUser||auth.currentUser;
-   initializing=false;
-   if(currentUser){
-    await handleUser(currentUser);
-   }else{
-    showStats(false);
-    try{
-     const anon=await auth.signInAnonymously();
-     await handleUser(anon.user);
-    }catch(e){
-     loginStatus.textContent="Ошибка подключения Firebase ("+(e.code||e.message)+").";
-    }
-   }
-  })();
-
   auth.onAuthStateChanged(async user=>{
-   if(initializing)return;
-   try{
-    if(user)await handleUser(user);
-    else{
-     lastHandledUid=null;
-     showStats(false);
-     const anon=await auth.signInAnonymously();
-     await handleUser(anon.user);
-    }
-   }catch(e){
-    loginStatus.textContent="Ошибка проверки входа ("+(e.code||e.message)+").";
+   if(user){
+    try{await handleUser(user);}catch(e){loginStatus.textContent="Ошибка проверки входа ("+(e.code||e.message)+").";}
+   }else{
+    lastHandledUid=null;
+    showStats(false);
+    await ensureAnonymousUser();
    }
   });
  }catch(e){loginStatus.textContent="Ошибка Firebase ("+(e.code||e.message)+").";}
