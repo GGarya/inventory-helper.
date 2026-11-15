@@ -46,12 +46,21 @@ footer{font-size:12px;color:#778195;text-align:center;margin:20px 0}
 <h1>Инвентаризация</h1>
 <p class="sub">Откройте свой Word-файл, отмечайте оборудование в любом порядке и скачайте заполненную копию.</p>
 
-<section class="user-stats" aria-label="Статистика пользователей">
- <div class="user-stat"><span>Всего пользователей</span><b id="usersTotal">—</b></div>
- <div class="user-stat"><span>Сейчас онлайн</span><b id="usersOnline">—</b></div>
- <div class="user-stat"><span>Посещений сегодня</span><b id="visitsToday">—</b></div>
+<section id="adminLoginPanel" class="panel" style="padding:12px;margin:12px 0">
+ <button id="adminLogin" class="secondary" style="width:100%">Вход администратора</button>
+ <div id="loginStatus" class="note" style="text-align:center;margin-top:8px">Статистика доступна только администратору.</div>
 </section>
-<div id="counterStatus">Счётчики требуют подключения Firebase.</div>
+<section id="adminStatsPanel" class="hidden" aria-label="Статистика пользователей">
+ <div class="user-stats">
+  <div class="user-stat"><span>Всего пользователей</span><b id="usersTotal">—</b></div>
+  <div class="user-stat"><span>Сейчас онлайн</span><b id="usersOnline">—</b></div>
+  <div class="user-stat"><span>Посещений сегодня</span><b id="visitsToday">—</b></div>
+ </div>
+ <div style="display:flex;justify-content:flex-end">
+  <button id="adminLogout" class="secondary" style="font-size:13px;padding:8px 12px">Выйти из панели</button>
+ </div>
+ <div id="counterStatus" class="note" style="text-align:center;margin-top:6px">Загрузка статистики…</div>
+</section>
 
 
 <section class="panel">
@@ -109,7 +118,7 @@ footer{font-size:12px;color:#778195;text-align:center;margin:20px 0}
 <script src="https://unpkg.com/docx-preview@0.3.6/dist/docx-preview.js"></script>
 
 
-<!-- Firebase: анонимная статистика посещений -->
+<!-- Firebase: учёт посещений для всех, просмотр статистики только администратором -->
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
@@ -125,66 +134,76 @@ footer{font-size:12px;color:#778195;text-align:center;margin:20px 0}
   appId: "1:736071486869:web:693a1247c4c70817177a9c",
   measurementId: "G-2DK83H08L0"
  };
-
+ const ADMIN_EMAIL="karyugini96@gmail.com";
+ const loginStatus=document.getElementById("loginStatus");
+ const statsPanel=document.getElementById("adminStatsPanel");
+ const loginPanel=document.getElementById("adminLoginPanel");
  const statusEl=document.getElementById("counterStatus");
  const totalEl=document.getElementById("usersTotal");
  const onlineEl=document.getElementById("usersOnline");
  const todayEl=document.getElementById("visitsToday");
+ let db,auth,statsListenersStarted=false;
 
- function setError(message){statusEl.textContent="Счётчики: "+message;}
- function localDateKey(){
+ function dateKey(){
   const d=new Date();
   return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
  }
-
+ function showStats(show){
+  statsPanel.classList.toggle("hidden",!show);
+  loginPanel.classList.toggle("hidden",show);
+ }
+ function countChildren(s){let n=0;s.forEach(()=>n++);return n;}
+ async function trackVisitor(user){
+  const uid=user.uid;
+  await db.ref("knownUsers/"+uid).set(true);
+  await db.ref("dailyVisitors/"+dateKey()+"/"+uid).set(true);
+  const connection=db.ref("online/"+uid).push();
+  await connection.onDisconnect().remove();
+  await connection.set({connectedAt:firebase.database.ServerValue.TIMESTAMP});
+ }
+ function startAdminStats(){
+  if(statsListenersStarted)return;
+  statsListenersStarted=true;
+  db.ref("knownUsers").on("value",s=>totalEl.textContent=countChildren(s).toLocaleString("ru-RU"),e=>statusEl.textContent="Нет доступа к статистике ("+e.code+"). Проверьте правила базы.");
+  db.ref("online").on("value",s=>{
+   let n=0;s.forEach(userNode=>{if(userNode.hasChildren())n++;});
+   onlineEl.textContent=n.toLocaleString("ru-RU");
+  },e=>statusEl.textContent="Нет доступа к онлайн-статистике ("+e.code+").");
+  db.ref("dailyVisitors/"+dateKey()).on("value",s=>todayEl.textContent=countChildren(s).toLocaleString("ru-RU"),e=>statusEl.textContent="Нет доступа к посещениям ("+e.code+").");
+  statusEl.textContent="Вход выполнен: "+ADMIN_EMAIL+". Статистика обновляется автоматически.";
+ }
  try{
   if(!firebase.apps.length)firebase.initializeApp(firebaseConfig);
-  const auth=firebase.auth();
-  const db=firebase.database();
+  auth=firebase.auth();db=firebase.database();
 
-  auth.signInAnonymously().then(async result=>{
-   const uid=result.user.uid;
-
-   // Один постоянный анонимный UID соответствует одному браузеру.
-   const markerRef=db.ref("knownUsers/"+uid+"/counted");
-   const markerResult=await markerRef.transaction(current=>current===true?undefined:true);
-   if(markerResult.committed){
-    await db.ref("stats/totalUsers").transaction(n=>(Number(n)||0)+1);
-   }
-
-   db.ref("stats/totalUsers").on("value",snap=>{
-    totalEl.textContent=Number(snap.val()||0).toLocaleString("ru-RU");
-   },err=>setError("ошибка чтения общего числа ("+err.code+")."));
-
-   // Каждая вкладка имеет собственное соединение; онлайн считаем по UID.
-   const connectionRef=db.ref("online/"+uid).push();
-   await connectionRef.onDisconnect().remove();
-   await connectionRef.set({connectedAt:firebase.database.ServerValue.TIMESTAMP});
-   db.ref("online").on("value",snap=>{
-    let count=0;
-    snap.forEach(userNode=>{if(userNode.hasChildren())count++;});
-    onlineEl.textContent=count.toLocaleString("ru-RU");
-   },err=>setError("ошибка чтения онлайн ("+err.code+")."));
-
-   // Посещения за день: один раз на браузер в сутки.
-   const day=localDateKey();
-   const dailyRef=db.ref("stats/dailyVisits/"+day);
-   const dailyMarkerRef=db.ref("dailyVisitors/"+day+"/"+uid);
-   const dailyMarker=await dailyMarkerRef.transaction(current=>current===true?undefined:true);
-   if(dailyMarker.committed){
-    await dailyRef.transaction(n=>(Number(n)||0)+1);
-   }
-   dailyRef.on("value",snap=>{
-    todayEl.textContent=Number(snap.val()||0).toLocaleString("ru-RU");
-   },err=>setError("ошибка чтения посещений ("+err.code+")."));
-
-   statusEl.textContent="Статистика подключена · обновляется автоматически.";
-  }).catch(err=>{
-   setError("не удалось выполнить анонимный вход. Проверьте Anonymous Authentication и правила базы ("+err.code+").");
+  document.getElementById("adminLogin").addEventListener("click",async()=>{
+   try{await auth.signInWithRedirect(new firebase.auth.GoogleAuthProvider());}
+   catch(e){loginStatus.textContent="Не удалось начать вход через Google ("+(e.code||e.message)+").";}
   });
- }catch(err){
-  setError("ошибка инициализации Firebase ("+(err.code||err.message)+").");
- }
+  document.getElementById("adminLogout").addEventListener("click",async()=>{
+   try{await auth.signOut();showStats(false);await auth.signInAnonymously();}
+   catch(e){statusEl.textContent="Ошибка выхода: "+(e.code||e.message);}
+  });
+
+  auth.getRedirectResult().catch(e=>loginStatus.textContent="Ошибка входа Google ("+(e.code||e.message)+").");
+  auth.onAuthStateChanged(async user=>{
+   if(user && !user.isAnonymous){
+    if((user.email||"").toLowerCase()===ADMIN_EMAIL){
+     showStats(true);statusEl.textContent="Проверка прав администратора…";startAdminStats();
+    }else{
+     showStats(false);loginStatus.textContent="Этот Google-аккаунт не имеет доступа к статистике.";
+     await auth.signOut();await auth.signInAnonymously();
+    }
+   }else if(!user){
+    showStats(false);
+    try{await auth.signInAnonymously();}catch(e){loginStatus.textContent="Ошибка подключения Firebase ("+(e.code||e.message)+").";}
+   }else{
+    showStats(false);
+    try{await trackVisitor(user);loginStatus.textContent="Статистика доступна только администратору.";}
+    catch(e){loginStatus.textContent="Учёт посещений временно недоступен ("+(e.code||e.message)+").";}
+   }
+  });
+ }catch(e){loginStatus.textContent="Ошибка Firebase ("+(e.code||e.message)+").";}
 })();
 </script>
 
