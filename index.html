@@ -177,15 +177,35 @@ footer{font-size:12px;color:#778195;text-align:center;margin:20px 0}
   auth=firebase.auth();db=firebase.database();
 
   document.getElementById("adminLogin").addEventListener("click",async()=>{
-   try{await auth.signInWithRedirect(new firebase.auth.GoogleAuthProvider());}
-   catch(e){loginStatus.textContent="Не удалось начать вход через Google ("+(e.code||e.message)+").";}
+   const button=document.getElementById("adminLogin");
+   button.disabled=true;
+   loginStatus.textContent="Открываем вход через Google…";
+   try{
+    await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+    const provider=new firebase.auth.GoogleAuthProvider();
+    provider.setCustomParameters({prompt:"select_account"});
+    const result=await auth.signInWithPopup(provider);
+    const user=result.user;
+    if(!user || (user.email||"").toLowerCase()!==ADMIN_EMAIL){
+     await auth.signOut();
+     await auth.signInAnonymously();
+     loginStatus.textContent="Доступ закрыт: выбран не администраторский аккаунт.";
+    }else{
+     showStats(true);
+     statusEl.textContent="Проверка прав администратора…";
+     startAdminStats();
+    }
+   }catch(e){
+    loginStatus.textContent="Ошибка входа Google ("+(e.code||e.message)+").";
+   }finally{
+    button.disabled=false;
+   }
   });
   document.getElementById("adminLogout").addEventListener("click",async()=>{
    try{await auth.signOut();showStats(false);await auth.signInAnonymously();}
    catch(e){statusEl.textContent="Ошибка выхода: "+(e.code||e.message);}
   });
 
-  auth.getRedirectResult().catch(e=>loginStatus.textContent="Ошибка входа Google ("+(e.code||e.message)+").");
   auth.onAuthStateChanged(async user=>{
    if(user && !user.isAnonymous){
     if((user.email||"").toLowerCase()===ADMIN_EMAIL){
