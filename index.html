@@ -142,7 +142,7 @@ footer{font-size:12px;color:#778195;text-align:center;margin:20px 0}
  const totalEl=document.getElementById("usersTotal");
  const onlineEl=document.getElementById("usersOnline");
  const todayEl=document.getElementById("visitsToday");
- let db,auth,statsListenersStarted=false;
+ let db,auth,statsListenersStarted=false,initializing=true,lastHandledUid=null;
 
  function dateKey(){
   const d=new Date();
@@ -172,55 +172,102 @@ footer{font-size:12px;color:#778195;text-align:center;margin:20px 0}
   db.ref("dailyVisitors/"+dateKey()).on("value",s=>todayEl.textContent=countChildren(s).toLocaleString("ru-RU"),e=>statusEl.textContent="Нет доступа к посещениям ("+e.code+").");
   statusEl.textContent="Вход выполнен: "+ADMIN_EMAIL+". Статистика обновляется автоматически.";
  }
+ async function handleUser(user){
+  if(!user){showStats(false);return;}
+  if(lastHandledUid===user.uid)return;
+  lastHandledUid=user.uid;
+  if(!user.isAnonymous){
+   if((user.email||"").toLowerCase()===ADMIN_EMAIL){
+    showStats(true);
+    statusEl.textContent="Google-вход подтверждён. Проверяем доступ к статистике…";
+    startAdminStats();
+   }else{
+    showStats(false);
+    loginStatus.textContent="Доступ закрыт: выбран другой Google-аккаунт.";
+    await auth.signOut();
+    lastHandledUid=null;
+    const anon=await auth.signInAnonymously();
+    await handleUser(anon.user);
+   }
+   return;
+  }
+  showStats(false);
+  try{
+   await trackVisitor(user);
+   loginStatus.textContent="Статистика доступна только администратору.";
+  }catch(e){
+   loginStatus.textContent="Учёт посещений временно недоступен ("+(e.code||e.message)+").";
+  }
+ }
  try{
   if(!firebase.apps.length)firebase.initializeApp(firebaseConfig);
   auth=firebase.auth();db=firebase.database();
 
-  document.getElementById("adminLogin").addEventListener("click",()=>{
+  document.getElementById("adminLogin").addEventListener("click",async()=>{
+   const button=document.getElementById("adminLogin");
+   button.disabled=true;
    loginStatus.textContent="Переходим к входу через Google…";
-   const provider=new firebase.auth.GoogleAuthProvider();
-   provider.setCustomParameters({prompt:"select_account"});
-   // Redirect is used instead of popup because iOS Safari blocks popups.
-   auth.signInWithRedirect(provider).catch(e=>{
-    loginStatus.textContent="Ошибка перехода к Google ("+(e.code||e.message)+").";
-   });
-  });
-
-  // Complete the redirect flow after Google sends the user back to this page.
-  auth.getRedirectResult().then(result=>{
-   if(result && result.user){
-    const user=result.user;
-    if((user.email||"").toLowerCase()!==ADMIN_EMAIL){
-     loginStatus.textContent="Доступ закрыт: выбран не администраторский аккаунт.";
-     return auth.signOut().then(()=>auth.signInAnonymously());
-    }
-    showStats(true);
-    statusEl.textContent="Вход выполнен. Загружаем статистику…";
-    startAdminStats();
+   try{
+    await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+    const provider=new firebase.auth.GoogleAuthProvider();
+    provider.setCustomParameters({prompt:"select_account"});
+    await auth.signInWithRedirect(provider);
+   }catch(e){
+    loginStatus.textContent="Ошибка входа Google ("+(e.code||e.message)+").";
+    button.disabled=false;
    }
-  }).catch(e=>{
-   loginStatus.textContent="Ошибка возврата после Google ("+(e.code||e.message)+").";
-  });
-  document.getElementById("adminLogout").addEventListener("click",async()=>{
-   try{await auth.signOut();showStats(false);await auth.signInAnonymously();}
-   catch(e){statusEl.textContent="Ошибка выхода: "+(e.code||e.message);}
   });
 
-  auth.onAuthStateChanged(async user=>{
-   if(user && !user.isAnonymous){
-    if((user.email||"").toLowerCase()===ADMIN_EMAIL){
-     showStats(true);statusEl.textContent="Проверка прав администратора…";startAdminStats();
-    }else{
-     showStats(false);loginStatus.textContent="Этот Google-аккаунт не имеет доступа к статистике.";
-     await auth.signOut();await auth.signInAnonymously();
-    }
-   }else if(!user){
+  document.getElementById("adminLogout").addEventListener("click",async()=>{
+   try{
+    statsListenersStarted=false;
+    db.ref("knownUsers").off();
+    db.ref("online").off();
+    db.ref("dailyVisitors/"+dateKey()).off();
+    await auth.signOut();
+    lastHandledUid=null;
     showStats(false);
-    try{await auth.signInAnonymously();}catch(e){loginStatus.textContent="Ошибка подключения Firebase ("+(e.code||e.message)+").";}
+    loginStatus.textContent="Вы вышли из панели администратора.";
+    const anon=await auth.signInAnonymously();
+    await handleUser(anon.user);
+   }catch(e){statusEl.textContent="Ошибка выхода: "+(e.code||e.message);}
+  });
+
+  (async()=>{
+   let redirectUser=null;
+   try{
+    const result=await auth.getRedirectResult();
+    if(result && result.user)redirectUser=result.user;
+   }catch(e){
+    loginStatus.textContent="Не удалось завершить вход Google ("+(e.code||e.message)+").";
+   }
+   const currentUser=redirectUser||auth.currentUser;
+   initializing=false;
+   if(currentUser){
+    await handleUser(currentUser);
    }else{
     showStats(false);
-    try{await trackVisitor(user);loginStatus.textContent="Статистика доступна только администратору.";}
-    catch(e){loginStatus.textContent="Учёт посещений временно недоступен ("+(e.code||e.message)+").";}
+    try{
+     const anon=await auth.signInAnonymously();
+     await handleUser(anon.user);
+    }catch(e){
+     loginStatus.textContent="Ошибка подключения Firebase ("+(e.code||e.message)+").";
+    }
+   }
+  })();
+
+  auth.onAuthStateChanged(async user=>{
+   if(initializing)return;
+   try{
+    if(user)await handleUser(user);
+    else{
+     lastHandledUid=null;
+     showStats(false);
+     const anon=await auth.signInAnonymously();
+     await handleUser(anon.user);
+    }
+   }catch(e){
+    loginStatus.textContent="Ошибка проверки входа ("+(e.code||e.message)+").";
    }
   });
  }catch(e){loginStatus.textContent="Ошибка Firebase ("+(e.code||e.message)+").";}
