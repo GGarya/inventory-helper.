@@ -628,26 +628,41 @@ function fillInspectionSummary(){
   const today=new Date().toLocaleDateString("ru-RU");
   const paragraphs=Array.from(xmlDoc.getElementsByTagNameNS("*","p"));
   const replacements=[
-    {match:"Всего проверено единиц оборудования",value:String(checked)},
-    {match:"Присутствует на месте",value:String(yes)},
-    {match:"Отсутствует:",value:String(no)},
-    {match:"Дата:",value:today}
+    {match:"Всего проверено единиц оборудования",value:String(checked),kind:"count"},
+    {match:"Присутствует на месте",value:String(yes),kind:"count"},
+    {match:"Отсутствует:",value:String(no),kind:"count"},
+    {match:"Дата:",value:today,kind:"date"}
   ];
+  const wNs="http://schemas.openxmlformats.org/wordprocessingml/2006/main";
   for(const item of replacements){
     const paragraph=paragraphs.find(p=>norm(textOf(p)).includes(norm(item.match)));
     if(!paragraph)continue;
     const texts=Array.from(paragraph.getElementsByTagNameNS("*","t"));
     if(!texts.length)continue;
-    // В шаблоне Word подписи и значения могут находиться в разных w:r/w:t.
-    // Меняем только конечное значение в последнем текстовом фрагменте,
-    // сохраняя подпись, двоеточие и исходное форматирование.
-    const target=texts[texts.length-1];
-    const old=target.textContent;
-    if(item.match==="Дата:"){
-      target.textContent=old.replace(/\d{1,2}\.\d{1,2}\.\d{4}\s*$/,item.value);
+    if(item.kind==="date"){
+      // Дата может находиться в отдельном фрагменте Word, а может отсутствовать.
+      let target=texts.slice().reverse().find(t=>/\d{1,2}\.\d{1,2}\.\d{4}/.test(t.textContent));
+      if(target){target.textContent=target.textContent.replace(/\d{1,2}\.\d{1,2}\.\d{4}/g,item.value);}
+      else{
+        target=texts[texts.length-1];
+        target.textContent=(target.textContent||"").replace(/_+\s*$/g,"").replace(/\s*$/," ")+item.value;
+      }
+      // Убираем подчёркивание с подписи «Дата:», не затрагивая дату.
+      const labelRun=Array.from(paragraph.getElementsByTagNameNS("*","r")).find(r=>Array.from(r.getElementsByTagNameNS("*","t")).some(t=>t.textContent.includes("Дата:")));
+      const u=labelRun&&labelRun.getElementsByTagNameNS(wNs,"u")[0];
+      if(u)u.setAttributeNS(wNs,"w:val","none");
     }else{
+      const target=texts[texts.length-1];
+      const old=target.textContent||"";
       target.textContent=old.replace(/(?:_+|\d+)\s*$/,item.value);
     }
+  }
+  // «Подписи:» — это обычная подпись раздела, не линия для заполнения.
+  const signatures=paragraphs.find(p=>norm(textOf(p))==="подписи:");
+  if(signatures){
+    const run=Array.from(signatures.getElementsByTagNameNS("*","r")).find(r=>Array.from(r.getElementsByTagNameNS("*","t")).some(t=>t.textContent.includes("Подписи:")));
+    const u=run&&run.getElementsByTagNameNS(wNs,"u")[0];
+    if(u)u.setAttributeNS(wNs,"w:val","none");
   }
 }
 $("save").addEventListener("click",async()=>{
