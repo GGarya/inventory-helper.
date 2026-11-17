@@ -7,10 +7,10 @@
 <title>Инвентаризация</title>
 <style>
 :root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#172033;background:#f3f5f8}
-*{box-sizing:border-box}body{margin:0;padding:16px 12px 40px;max-width:850px;margin-inline:auto}
+*{box-sizing:border-box;min-width:0}html{width:100%;max-width:100%;overflow-x:hidden}body{margin:0;padding:16px 12px 40px;width:100%;max-width:850px;margin-inline:auto;overflow-x:hidden}
 h1{font-size:25px;margin:8px 0 5px}.sub{color:#687386;font-size:14px;margin:0 0 18px}
 .topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 4px}.topbar h1{margin:8px 0 5px}.admin-login{margin-left:auto;flex:0 0 auto}.admin-login button{background:#edf1f6;color:#475569;border:1px solid #dfe5ed;border-radius:999px;padding:8px 12px;font-size:12px;font-weight:600;white-space:nowrap}.login-status{font-size:11px;color:#778195;text-align:right;min-height:0;margin:0 2px 8px}
-.panel{background:white;border:1px solid #e0e5ec;border-radius:16px;padding:15px;margin:12px 0;box-shadow:0 2px 8px #17203308}
+.panel{background:white;border:1px solid #e0e5ec;border-radius:16px;padding:15px;margin:12px 0;max-width:100%;min-width:0;box-shadow:0 2px 8px #17203308}
 
 .help{background:#fff;border:1px solid #e0e5ec;border-radius:14px;margin:12px 0;padding:0 14px;box-shadow:0 2px 8px #17203308}
 .help summary{cursor:pointer;list-style:none;font-weight:700;padding:14px 24px 14px 0;position:relative}
@@ -31,17 +31,17 @@ input[type=file]{display:none}.filebtn{display:block;text-align:center;backgroun
 .stat b{font-size:16px}
 @media(max-width:560px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .bar{height:8px;background:#e8ecf2;border-radius:99px;overflow:hidden}.fill{height:100%;background:#172033;width:0}
-.filters{display:flex;gap:6px;overflow:auto;margin:12px 0}
+.filters{display:flex;gap:6px;overflow-x:auto;overflow-y:hidden;max-width:100%;min-width:0;margin:12px 0;-webkit-overflow-scrolling:touch}
 .filters button{white-space:nowrap;background:#edf1f6;color:#334155;padding:10px 13px;font-size:14px}
 .filters button.active{background:#172033;color:white}
-.item{background:white;border:1px solid #e0e5ec;border-radius:14px;padding:13px;margin:9px 0}
-.itemtop{display:flex;gap:10px;justify-content:space-between;align-items:flex-start}
-.itemname{font-weight:700;line-height:1.35}.meta{color:#687386;font-size:13px;margin-top:5px;overflow-wrap:anywhere}
-.pill{font-size:12px;padding:5px 8px;border-radius:99px;background:#edf1f6;white-space:nowrap}
+.item{background:white;border:1px solid #e0e5ec;border-radius:14px;padding:13px;margin:9px 0;max-width:100%;min-width:0;overflow:hidden}
+.itemtop{display:flex;gap:10px;justify-content:space-between;align-items:flex-start;min-width:0;max-width:100%}
+.iteminfo{flex:1 1 auto;min-width:0;max-width:100%}.itemname{font-weight:700;line-height:1.35;min-width:0;max-width:100%;overflow-wrap:anywhere;word-break:break-word}.meta{color:#687386;font-size:13px;margin-top:5px;min-width:0;max-width:100%;overflow-wrap:anywhere;word-break:break-word}
+.pill{font-size:12px;padding:5px 8px;border-radius:99px;background:#edf1f6;white-space:nowrap;flex:0 0 auto;max-width:100%}
 .pill.yes{background:#e3f5e9;color:#146c35}.pill.no{background:#fde8e8;color:#a32626}
 .actions{display:flex;gap:8px;margin-top:11px}.actions button{flex:1;padding:11px;font-size:15px}
 .yesbtn{background:#e3f5e9;color:#146c35}.nobtn{background:#fde8e8;color:#a32626}.clearbtn{background:#edf1f6;color:#475569;flex:0 0 48px!important}.deletebtn{background:#f1f3f6;color:#64748b;flex:0 0 28px!important;width:28px;height:28px;padding:0!important;border-radius:8px;font-size:19px!important;line-height:1;font-weight:400;display:flex;align-items:center;justify-content:center}.item-tools{display:flex;align-items:center;gap:7px;flex:0 0 auto}
-.note{font-size:13px;color:#687386;line-height:1.45}.autosave{display:flex;align-items:center;gap:7px;font-size:13px;color:#687386;margin-top:9px}.autosave-dot{width:8px;height:8px;border-radius:50%;background:#16a34a;display:inline-block}.fieldlabel{display:block;font-size:13px;font-weight:650;color:#475569;margin:9px 0 5px}.field{width:100%;padding:11px 12px;border:1px solid #d5dce6;border-radius:10px;font-size:16px;background:#fff;color:#172033}.macedit{margin-top:10px}.addgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.addgrid .wide{grid-column:1/-1}.hidden{display:none!important}
+.note{font-size:13px;color:#687386;line-height:1.45}.autosave{display:flex;align-items:center;gap:7px;font-size:13px;color:#687386;margin-top:9px}.autosave-dot{width:8px;height:8px;border-radius:50%;background:#16a34a;display:inline-block}.fieldlabel{display:block;font-size:13px;font-weight:650;color:#475569;margin:9px 0 5px}.field{width:100%;padding:11px 12px;border:1px solid #d5dce6;border-radius:10px;font-size:16px;background:#fff;color:#172033}.macedit{margin-top:10px}.addgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;min-width:0;max-width:100%}.addgrid .wide{grid-column:1/-1}.hidden{display:none!important}
 #message{font-size:14px;color:#475569;margin-top:10px;white-space:pre-wrap}
 footer{font-size:12px;color:#778195;text-align:center;margin:20px 0}
 
@@ -69,7 +69,7 @@ footer{font-size:12px;color:#778195;text-align:center;margin:20px 0}
  <div class="help-content">
   <ol>
    <li><strong>Откройте документ.</strong> Нажмите «Выбрать Word-файл (.docx)» и выберите исходный файл инвентаризации в формате DOCX. Дождитесь загрузки списка оборудования.</li>
-   <li><strong>Проверьте каждую позицию.</strong> Найдите оборудование в списке и нажмите «Да», если оно фактически присутствует, или «Нет», если его нет. Кнопка «×» снимает отметку. Кнопка «Удалить» полностью удаляет позицию из текущего списка и итогового Word-файла.</li>
+   <li><strong>Проверьте каждую позицию.</strong> Найдите оборудование в списке и нажмите «Да», если оно фактически присутствует, или «Нет», если его нет. Кнопка «×» рядом со статусом удаляет позицию из списка и итогового Word-файла. Кнопка «×» внизу карточки снимает отметку.</li>
    <li><strong>Используйте поиск и фильтры.</strong> В строке поиска можно искать по номеру, названию, инвентарному или серийному номеру. Кнопки «Все», «Не проверено», «Да» и «Нет» показывают только нужные позиции.</li>
    <li><strong>Исправляйте MAC-адрес.</strong> Если у позиции есть поле MAC-адрес, его можно отредактировать прямо в карточке оборудования.</li>
    <li><strong>Добавляйте оборудование.</strong> В блоке «Добавить оборудование» заполните известные поля. Укажите хотя бы тип оборудования или название, затем нажмите «Добавить оборудование». Новая строка попадёт в конец таблицы Word.</li>
