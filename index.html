@@ -68,13 +68,12 @@ footer{font-size:12px;color:#778195;text-align:center;margin:20px 0}
 
 .mobile-nav{display:none}
 @media(max-width:560px){
- body.has-workspace{padding-bottom:calc(94px + env(safe-area-inset-bottom))}
- body.has-workspace .mobile-nav{position:fixed;z-index:1000;left:0;right:0;bottom:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;padding:7px 12px calc(7px + env(safe-area-inset-bottom));background:rgba(255,255,255,.94);border-top:1px solid rgba(60,70,85,.12);box-shadow:0 -4px 18px rgba(23,32,51,.07);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
- body.has-workspace .mobile-nav button{appearance:none;-webkit-appearance:none;min-width:0;min-height:58px;padding:5px 4px;border-radius:12px;background:transparent;color:#6b7280;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:11px;font-weight:600;line-height:1.15;white-space:nowrap;transition:background .15s ease,color .15s ease}
- body.has-workspace .mobile-nav button:active{background:rgba(51,144,236,.12);color:#2481d7}
- body.has-workspace .mobile-nav .nav-save{color:#2481d7}
- body.has-workspace .mobile-nav .nav-icon{width:23px;height:23px;display:flex;align-items:center;justify-content:center}
- body.has-workspace .mobile-nav .nav-icon svg{display:block;width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+ body.has-workspace{padding-bottom:calc(112px + env(safe-area-inset-bottom))}
+ body.has-workspace .mobile-nav{position:fixed;z-index:1000;left:0;right:0;bottom:env(safe-area-inset-bottom);display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:10px 12px;background:#f3f5f8;border-top:1px solid #e1e6ed;box-shadow:0 -5px 20px rgba(23,32,51,.08);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+ body.has-workspace .mobile-nav button{min-width:0;min-height:54px;padding:7px 4px;border-radius:13px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:12px;line-height:1.15;white-space:nowrap}
+ body.has-workspace .mobile-nav .nav-search,body.has-workspace .mobile-nav .nav-add{background:#edf1f6;color:#334155}
+ body.has-workspace .mobile-nav .nav-save{background:#172033;color:#fff}
+ body.has-workspace .mobile-nav .nav-icon{font-size:19px;line-height:1}
 }
 
 
@@ -117,9 +116,7 @@ html[data-theme="dark"] .nobtn{background:#492326!important;color:#ff8a8a!import
 html[data-theme="dark"] .bar{background:#3a3a3c!important}
 html[data-theme="dark"] .fill{background:#0a84ff!important}
 html[data-theme="dark"] .mobile-nav{background:rgba(28,28,30,.94)!important;border-color:#38383a!important;box-shadow:0 -5px 20px #0006!important}
-html[data-theme="dark"] .mobile-nav button{background:transparent!important;color:#a1a1aa!important}
-html[data-theme="dark"] .mobile-nav .nav-save{color:#64b5ff!important}
-html[data-theme="dark"] .mobile-nav button:active{background:rgba(10,132,255,.18)!important;color:#64b5ff!important}
+html[data-theme="dark"] .mobile-nav .nav-search,html[data-theme="dark"] .mobile-nav .nav-add{background:#3a3a3c!important;color:#f5f5f7!important}
 html[data-theme="dark"] #message{color:#c7c7cc!important}
 html[data-theme="dark"] .theme-switch{background:#48484a}
 html[data-theme="dark"] .theme-toggle[aria-pressed="true"] .theme-switch{background:#0a84ff}
@@ -216,9 +213,9 @@ html[data-theme="dark"] .theme-toggle[aria-pressed="true"] .theme-switch{backgro
 </div>
 </section>
 <nav class="mobile-nav" id="mobileNav" aria-label="Быстрые действия">
- <button type="button" class="nav-search" id="navSearch"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.8"></circle><path d="m16 16 4.2 4.2"></path></svg></span><span>Поиск</span></button>
- <button type="button" class="nav-add" id="navAdd"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"></path></svg></span><span>Добавить</span></button>
- <button type="button" class="nav-save" id="navSave"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5M4 20h16"></path></svg></span><span>Скачать Word</span></button>
+ <button type="button" class="nav-search" id="navSearch"><span class="nav-icon">⌕</span><span>Поиск</span></button>
+ <button type="button" class="nav-add" id="navAdd"><span class="nav-icon">＋</span><span>Добавить</span></button>
+ <button type="button" class="nav-save" id="navSave"><span class="nav-icon">↓</span><span>Скачать Word</span></button>
 </nav>
 <footer>Обработка документа выполняется на вашем устройстве. Файл не загружается на сервер.</footer>
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
