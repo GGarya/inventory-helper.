@@ -10,7 +10,7 @@
 *{box-sizing:border-box;min-width:0}html,body{width:100%;max-width:100%;overflow-x:hidden}body{margin:0;padding:16px 12px 40px;max-width:850px;margin-inline:auto}
 h1{font-size:25px;margin:8px 0 5px}.sub{color:#687386;font-size:14px;margin:0 0 18px}
 .topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 4px}.topbar h1{margin:8px 0 5px}.admin-login{margin-left:auto;flex:0 0 auto}.admin-login button{background:#edf1f6;color:#475569;border:1px solid #dfe5ed;border-radius:999px;padding:8px 12px;font-size:12px;font-weight:600;white-space:nowrap}.login-status{font-size:11px;color:#778195;text-align:right;min-height:0;margin:0 2px 8px}
-.panel{background:white;border:1px solid #e0e5ec;border-radius:16px;padding:15px;margin:12px 0;box-shadow:0 2px 8px #17203308}
+.panel{background:white;border:1px solid #e0e5ec;border-radius:16px;padding:15px;margin:12px 0;box-shadow:0 2px 8px #17203308;min-width:0;max-width:100%;overflow:hidden}
 
 .help{background:#fff;border:1px solid #e0e5ec;border-radius:14px;margin:12px 0;padding:0 14px;box-shadow:0 2px 8px #17203308}
 .help summary{cursor:pointer;list-style:none;font-weight:700;padding:14px 24px 14px 0;position:relative}
@@ -29,18 +29,18 @@ input[type=file]{display:none}.filebtn{display:block;text-align:center;backgroun
 .stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;font-size:14px;margin:10px 0}
 .stat{background:#f2f4f7;padding:10px 12px;border-radius:10px;display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0;white-space:nowrap}
 .stat b{font-size:16px}
-@media(max-width:560px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.panel{padding:12px}.addgrid{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}input,select,button{max-width:100%}}
 .bar{height:8px;background:#e8ecf2;border-radius:99px;overflow:hidden}.fill{height:100%;background:#172033;width:0}
 .filters{display:flex;gap:6px;overflow:auto;margin:12px 0}
 .filters button{white-space:nowrap;background:#edf1f6;color:#334155;padding:10px 13px;font-size:14px}
 .filters button.active{background:#172033;color:white}
-.item{position:relative;background:white;border:1px solid #e0e5ec;border-radius:14px;padding:13px;margin:9px 0;max-width:100%;min-width:0;overflow:hidden}
-.itemtop{display:flex;gap:10px;justify-content:space-between;align-items:flex-start;min-width:0}.itemtop>div:first-child{min-width:0;flex:1;overflow-wrap:anywhere}
-.itemname{font-weight:700;line-height:1.35;overflow-wrap:anywhere}.meta{color:#687386;font-size:13px;margin-top:5px;overflow-wrap:anywhere}
+.item{background:white;border:1px solid #e0e5ec;border-radius:14px;padding:13px;margin:9px 0;min-width:0;max-width:100%;overflow:hidden}
+.itemtop{display:flex;gap:10px;justify-content:space-between;align-items:flex-start;min-width:0}.itemtop>div:first-child{min-width:0;max-width:100%;overflow-wrap:anywhere}
+.itemname{font-weight:700;line-height:1.35}.meta{color:#687386;font-size:13px;margin-top:5px;overflow-wrap:anywhere}
 .pill{font-size:12px;padding:5px 8px;border-radius:99px;background:#edf1f6;white-space:nowrap}
 .pill.yes{background:#e3f5e9;color:#146c35}.pill.no{background:#fde8e8;color:#a32626}
-.actions{display:flex;gap:8px;margin-top:11px;min-width:0}.actions button{min-width:0}.actions button{flex:1;padding:11px;font-size:15px}
-.delete-item{display:block;width:100%;margin-top:8px;padding:9px 12px;border-radius:9px;background:#fff1f1;color:#a32626;font-size:13px;font-weight:600}.yesbtn{background:#e3f5e9;color:#146c35}.nobtn{background:#fde8e8;color:#a32626}.clearbtn{background:#edf1f6;color:#475569;flex:0 0 48px!important}
+.actions{display:flex;gap:8px;margin-top:11px;min-width:0}.actions button{flex:1;min-width:0;padding:11px;font-size:15px}.delete-equipment{display:block;width:100%;margin-top:8px;padding:9px 11px!important;font-size:13px!important;background:#f1f3f6;color:#687386;border:1px solid #e0e5ec}
+.yesbtn{background:#e3f5e9;color:#146c35}.nobtn{background:#fde8e8;color:#a32626}.clearbtn{background:#edf1f6;color:#475569;flex:0 0 48px!important}
 .note{font-size:13px;color:#687386;line-height:1.45}.autosave{display:flex;align-items:center;gap:7px;font-size:13px;color:#687386;margin-top:9px}.autosave-dot{width:8px;height:8px;border-radius:50%;background:#16a34a;display:inline-block}.fieldlabel{display:block;font-size:13px;font-weight:650;color:#475569;margin:9px 0 5px}.field{width:100%;padding:11px 12px;border:1px solid #d5dce6;border-radius:10px;font-size:16px;background:#fff;color:#172033}.macedit{margin-top:10px}.addgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.addgrid .wide{grid-column:1/-1}.hidden{display:none!important}
 #message{font-size:14px;color:#475569;margin-top:10px;white-space:pre-wrap}
 footer{font-size:12px;color:#778195;text-align:center;margin:20px 0}
@@ -51,7 +51,7 @@ footer{font-size:12px;color:#778195;text-align:center;margin:20px 0}
 .user-stat b{display:block;width:100%;font-size:26px;line-height:1.1;margin-top:10px;color:#172033;font-variant-numeric:tabular-nums;text-align:left;letter-spacing:-.5px}
 #counterStatus{font-size:11px;color:#8791a1;margin:7px 2px 0;text-align:right}
 @media(max-width:560px){.user-stats{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin:12px 0 10px}.user-stat{padding:11px 8px 10px;min-height:96px;border-radius:13px}.user-stat span{font-size:11px;min-height:31px}.user-stat b{font-size:22px;margin-top:8px}}
-@media(max-width:360px){.user-stats{gap:5px}.user-stat{padding:10px 6px;min-height:92px}.user-stat span{font-size:10px}.user-stat b{font-size:20px}}\n@media(max-width:560px){body{padding-left:10px;padding-right:10px}.panel{padding:12px}.item{padding:11px}.itemtop{gap:6px}.pill{font-size:11px;padding:4px 6px}.actions{gap:6px}.actions button{padding:10px 6px;font-size:14px}.addgrid{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}\n#workspace,.panel,#list,.item,.itemtop,.meta,.field{max-width:100%;min-width:0}input,select,button{max-width:100%}
+@media(max-width:360px){.user-stats{gap:5px}.user-stat{padding:10px 6px;min-height:92px}.user-stat span{font-size:10px}.user-stat b{font-size:20px}}
 
 </style>
 </head>
@@ -458,34 +458,6 @@ function render(){
  for(const r of visible){
   const status=statuses[r.rowIndex]||"",div=document.createElement("div");div.className="item";
   const top=document.createElement("div");top.className="itemtop";
-  const deleteButton=document.createElement("button");
-  deleteButton.type="button";deleteButton.className="delete-item";
-  deleteButton.textContent="Удалить карточку оборудования";deleteButton.title="Удалить оборудование";
-  deleteButton.setAttribute("aria-label","Удалить оборудование № "+r.num);
-  deleteButton.addEventListener("click",()=>{
-   if(!confirm("Удалить оборудование № "+r.num+" («"+(r.name||r.type||"Оборудование")+"»)?"))return;
-   const removedRow=tableRows[r.rowIndex];
-   if(removedRow&&removedRow.parentNode)removedRow.parentNode.removeChild(removedRow);
-   tableRows.splice(r.rowIndex,1);
-   records=records.filter(item=>item!==r);
-   const nextStatuses={};
-   records.forEach(item=>{
-    const oldIndex=item.rowIndex;
-    const newIndex=tableRows.indexOf(item.cells[0]&&item.cells[0].parentNode);
-    if(newIndex>=0){
-     if(statuses[oldIndex])nextStatuses[newIndex]=statuses[oldIndex];
-     item.rowIndex=newIndex;
-    }
-   });
-   statuses=nextStatuses;
-   records.forEach((item,index)=>{
-    item.num=String(index+1);
-    if(item.cells[0])setCellText(item.cells[0],item.num);
-   });
-   $("filename").textContent=sourceName+".docx · "+records.length+" позиций";
-   showMessage("Карточка оборудования удалена. Изменение сохранится автоматически и попадёт в скачанный Word-файл.");
-   render();scheduleAutosave();
-  });
   const info=document.createElement("div");
   const nm=document.createElement("div");nm.className="itemname";nm.textContent="№ "+r.num+". "+(r.name||r.type||"Оборудование");
   const meta=document.createElement("div");meta.className="meta";meta.textContent=[r.type,r.inv,r.serial].filter(Boolean).join(" · ");
@@ -497,7 +469,34 @@ function render(){
   for(const [label,val,cls] of [["Да","Да","yesbtn"],["Нет","Нет","nobtn"],["×","","clearbtn"]]){
    const b=document.createElement("button");b.textContent=label;b.className=cls;b.addEventListener("click",()=>{if(val)statuses[r.rowIndex]=val;else delete statuses[r.rowIndex];render();scheduleAutosave()});actions.append(b);
   }
-  div.append(actions,deleteButton);list.append(div);
+  div.append(actions);
+  const remove=document.createElement("button");
+  remove.type="button";remove.className="delete-equipment";remove.textContent="Удалить карточку оборудования";
+  remove.addEventListener("click",()=>{
+   if(!confirm("Удалить эту карточку оборудования из инвентаризации?"))return;
+   const row=r.cells[0].parentNode;
+   const oldIndex=tableRows.indexOf(row);
+   if(oldIndex<0)return;
+   const oldStatuses={};
+   for(const item of records){const value=statuses[item.rowIndex];if(value)oldStatuses[item.cells[0].parentNode]=value;}
+   row.remove();
+   tableRows.splice(oldIndex,1);
+   records=records.filter(item=>item!==r);
+   const nextStatuses={};
+   records.forEach(item=>{
+    const value=oldStatuses[item.cells[0].parentNode];
+    item.rowIndex=tableRows.indexOf(item.cells[0].parentNode);
+    if(value)nextStatuses[item.rowIndex]=value;
+   });
+   statuses=nextStatuses;
+   records.forEach((item,index)=>{
+    item.num=String(index+1);
+    setCellText(item.cells[0],item.num);
+   });
+   showMessage("Карточка оборудования удалена из инвентаризации.");
+   render();scheduleAutosave();
+  });
+  div.append(remove);list.append(div);
  }
 }
 $("search").addEventListener("input",render);
