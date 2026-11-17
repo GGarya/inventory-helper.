@@ -634,13 +634,20 @@ function fillInspectionSummary(){
     {match:"Дата:",value:today}
   ];
   for(const item of replacements){
-    const paragraph=paragraphs.find(p=>textOf(p).includes(item.match));
+    const paragraph=paragraphs.find(p=>norm(textOf(p)).includes(norm(item.match)));
     if(!paragraph)continue;
     const texts=Array.from(paragraph.getElementsByTagNameNS("*","t"));
     if(!texts.length)continue;
-    let target=[...texts].reverse().find(t=>/_+|\\d{1,2}\\.\\d{1,2}\\.\\d{4}|\\d+\\s*$/.test(t.textContent));
-    if(!target)target=texts[texts.length-1];
-    target.textContent=target.textContent.replace(/(?:_+|\\d{1,2}\\.\\d{1,2}\\.\\d{4}|\\d+)\\s*$/,item.value);
+    // В шаблоне Word подписи и значения могут находиться в разных w:r/w:t.
+    // Меняем только конечное значение в последнем текстовом фрагменте,
+    // сохраняя подпись, двоеточие и исходное форматирование.
+    const target=texts[texts.length-1];
+    const old=target.textContent;
+    if(item.match==="Дата:"){
+      target.textContent=old.replace(/\d{1,2}\.\d{1,2}\.\d{4}\s*$/,item.value);
+    }else{
+      target.textContent=old.replace(/(?:_+|\d+)\s*$/,item.value);
+    }
   }
 }
 $("save").addEventListener("click",async()=>{
