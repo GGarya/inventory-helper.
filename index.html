@@ -506,15 +506,21 @@ function render(){
    const row=r.cells[0].parentNode;
    const oldIndex=tableRows.indexOf(row);
    if(oldIndex<0)return;
-   const oldStatuses={};
-   for(const item of records){const value=statuses[item.rowIndex];if(value)oldStatuses[item.cells[0].parentNode]=value;}
+   // Сохраняем отметки по DOM-строкам. Map не смешивает разные строки,
+   // в отличие от обычного объекта с ключами вида "[object HTMLTableRowElement]".
+   const oldStatuses=new Map();
+   for(const item of records){
+    const value=statuses[item.rowIndex];
+    if(value)oldStatuses.set(item.cells[0].parentNode,value);
+   }
    row.remove();
    tableRows.splice(oldIndex,1);
    records=records.filter(item=>item!==r);
    const nextStatuses={};
    records.forEach(item=>{
-    const value=oldStatuses[item.cells[0].parentNode];
-    item.rowIndex=tableRows.indexOf(item.cells[0].parentNode);
+    const rowNode=item.cells[0].parentNode;
+    const value=oldStatuses.get(rowNode);
+    item.rowIndex=tableRows.indexOf(rowNode);
     if(value)nextStatuses[item.rowIndex]=value;
    });
    statuses=nextStatuses;
