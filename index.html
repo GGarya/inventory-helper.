@@ -585,7 +585,7 @@ function fillInspectionSummary(){
     const paragraph=paragraphs.find(p=>textOf(p).includes(item.match));
     if(!paragraph)continue;
     const target=Array.from(paragraph.getElementsByTagNameNS("*","t")).find(t=>t.textContent.includes("_"));
-    if(target)target.textContent=item.value;
+    if(target)target.textContent=target.textContent.replace(/_+/g,item.value);
   }
 }
 $("save").addEventListener("click",async()=>{
