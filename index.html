@@ -13,11 +13,11 @@ h1{font-size:25px;margin:8px 0 5px}.sub{color:#687386;font-size:14px;margin:0 0 
 .topbar{display:flex;align-items:center;justify-content:center;gap:12px;margin:0 0 4px}.topbar h1{margin:8px 0 5px;text-align:center}.admin-login{display:none!important;margin-left:auto;flex:0 0 auto}.admin-login button{background:#edf1f6;color:#475569;border:1px solid #dfe5ed;border-radius:999px;padding:8px 12px;font-size:12px;font-weight:600;white-space:nowrap}.login-status{display:none!important;font-size:11px;color:#778195;text-align:right;min-height:0;margin:0 2px 8px}
 @media(max-width:560px){.topbar{flex-direction:row;align-items:center;justify-content:center;gap:10px;margin-bottom:4px}.topbar h1{text-align:center;font-size:21px;line-height:1.15;margin:4px 0;white-space:nowrap}.admin-login{align-self:center;margin:0;flex:0 0 auto}.admin-login button{padding:7px 12px;font-size:12px}.login-status{text-align:right;font-size:10px;margin:0 2px 6px}}
 .panel{background:white;border:1px solid #e0e5ec;border-radius:16px;padding:15px;margin:12px 0;box-shadow:0 2px 8px #17203308;min-width:0;max-width:100%;overflow:hidden}
-.start-panel{width:100%;max-width:560px;margin:12px auto}
+.start-panel{width:100%;max-width:560px;margin:0 auto}
 .start-panel .filebtn,.start-panel #deleteDraft{min-height:56px;display:flex;align-items:center;justify-content:center}
 body.start-mode footer{margin-top:auto;padding-bottom:env(safe-area-inset-bottom)}
 
-.help{background:#fff;border:1px solid #e0e5ec;border-radius:14px;margin:12px 0;padding:0 14px;box-shadow:0 2px 8px #17203308}
+.help{background:#fff;border:1px solid #e0e5ec;border-radius:14px;margin:12px 0 0;padding:0 14px;box-shadow:0 2px 8px #17203308}
 .help summary{cursor:pointer;list-style:none;font-weight:700;padding:14px 24px 14px 0;position:relative}
 .help summary::-webkit-details-marker{display:none}
 .help summary:after{content:"＋";position:absolute;right:2px;top:12px;color:#475569;font-size:19px;font-weight:400}
@@ -61,7 +61,7 @@ footer{font-size:12px;color:#778195;text-align:center;margin:20px 0}
 .mobile-nav{display:none}
 @media(max-width:560px){
  body.has-workspace{padding-bottom:calc(112px + env(safe-area-inset-bottom))}
- body.has-workspace .mobile-nav{position:fixed;z-index:1000;left:0;right:0;bottom:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:rgba(243,245,248,.97);border-top:1px solid #e1e6ed;box-shadow:0 -5px 20px rgba(23,32,51,.08);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+ body.has-workspace .mobile-nav{position:fixed;z-index:1000;left:0;right:0;bottom:env(safe-area-inset-bottom);display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:10px 12px;background:#f3f5f8;border-top:1px solid #e1e6ed;box-shadow:0 -5px 20px rgba(23,32,51,.08);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
  body.has-workspace .mobile-nav button{min-width:0;min-height:54px;padding:7px 4px;border-radius:13px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:12px;line-height:1.15;white-space:nowrap}
  body.has-workspace .mobile-nav .nav-search,body.has-workspace .mobile-nav .nav-add{background:#edf1f6;color:#334155}
  body.has-workspace .mobile-nav .nav-save{background:#172033;color:#fff}
