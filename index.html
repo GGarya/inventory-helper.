@@ -34,12 +34,12 @@ input[type=file]{display:none}.filebtn{display:block;text-align:center;backgroun
 .filters{display:flex;gap:6px;overflow-x:auto;overflow-y:hidden;max-width:100%;min-width:0;margin:12px 0;-webkit-overflow-scrolling:touch}
 .filters button{white-space:nowrap;background:#edf1f6;color:#334155;padding:10px 13px;font-size:14px}
 .filters button.active{background:#172033;color:white}
-.item{background:white;border:1px solid #e0e5ec;border-radius:14px;padding:13px;margin:9px 0;max-width:100%;min-width:0;overflow:hidden}
+.item{background:white;border:1px solid #e0e5ec;border-radius:14px;padding:15px;margin:10px 0;max-width:100%;min-width:0;overflow:hidden}
 .itemtop{display:flex;gap:10px;justify-content:space-between;align-items:flex-start;min-width:0;max-width:100%}
-.iteminfo{flex:1 1 auto;min-width:0;max-width:100%}.itemname{font-weight:700;line-height:1.35;min-width:0;max-width:100%;overflow-wrap:anywhere;word-break:break-word}.meta{color:#687386;font-size:13px;margin-top:5px;min-width:0;max-width:100%;overflow-wrap:anywhere;word-break:break-word}
+.iteminfo{flex:1 1 auto;min-width:0;max-width:100%}.itemname{font-weight:750;font-size:17px;line-height:1.4;min-width:0;max-width:100%;overflow-wrap:anywhere;word-break:break-word;margin-bottom:9px}.item-meta{display:grid;gap:6px;margin-top:2px;min-width:0;max-width:100%}.meta-row{display:grid;grid-template-columns:104px minmax(0,1fr);gap:8px;align-items:start;font-size:13px;line-height:1.45;min-width:0}.meta-label{color:#8791a1;font-weight:600}.meta-value{color:#475569;overflow-wrap:anywhere;word-break:break-word;min-width:0}
 .pill{font-size:12px;padding:5px 8px;border-radius:99px;background:#edf1f6;white-space:nowrap;flex:0 0 auto;max-width:100%}
 .pill.yes{background:#e3f5e9;color:#146c35}.pill.no{background:#fde8e8;color:#a32626}
-.actions{display:flex;gap:8px;margin-top:11px}.actions button{flex:1;padding:11px;font-size:15px}
+.actions{display:flex;gap:8px;margin-top:14px}.actions button{flex:1;padding:11px;font-size:15px}
 .yesbtn{background:#e3f5e9;color:#146c35}.nobtn{background:#fde8e8;color:#a32626}.clearbtn{background:#edf1f6;color:#475569;flex:0 0 48px!important}.deletebtn{background:#f1f3f6;color:#64748b;flex:0 0 28px!important;width:28px;height:28px;padding:0!important;border-radius:8px;font-size:19px!important;line-height:1;font-weight:400;display:flex;align-items:center;justify-content:center}.item-tools{display:flex;align-items:center;gap:7px;flex:0 0 auto}
 .note{font-size:13px;color:#687386;line-height:1.45}.autosave{display:flex;align-items:center;gap:7px;font-size:13px;color:#687386;margin-top:9px}.autosave-dot{width:8px;height:8px;border-radius:50%;background:#16a34a;display:inline-block}.fieldlabel{display:block;font-size:13px;font-weight:650;color:#475569;margin:9px 0 5px}.field{width:100%;padding:11px 12px;border:1px solid #d5dce6;border-radius:10px;font-size:16px;background:#fff;color:#172033}.macedit{margin-top:10px}.addgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;min-width:0;max-width:100%}.addgrid .wide{grid-column:1/-1}.hidden{display:none!important}
 #message{font-size:14px;color:#475569;margin-top:10px;white-space:pre-wrap}
@@ -458,9 +458,19 @@ function render(){
  for(const r of visible){
   const status=statuses[r.rowIndex]||"",div=document.createElement("div");div.className="item";
   const top=document.createElement("div");top.className="itemtop";
-  const info=document.createElement("div");
+  const info=document.createElement("div");info.className="iteminfo";
   const nm=document.createElement("div");nm.className="itemname";nm.textContent="№ "+r.num+". "+(r.name||r.type||"Оборудование");
-  const meta=document.createElement("div");meta.className="meta";meta.textContent=[r.type,r.inv,r.serial].filter(Boolean).join(" · ");
+  const meta=document.createElement("div");meta.className="item-meta";
+  const addMetaRow=(label,value)=>{
+   if(!value)return;
+   const line=document.createElement("div");line.className="meta-row";
+   const key=document.createElement("span");key.className="meta-label";key.textContent=label;
+   const val=document.createElement("span");val.className="meta-value";val.textContent=value;
+   line.append(key,val);meta.append(line);
+  };
+  addMetaRow("Тип",""+(r.type||""));
+  addMetaRow("Инв. номер",""+(r.inv||""));
+  addMetaRow("Серийный №",""+(r.serial||""));
   info.append(nm,meta);
   if(r.macCell){const macWrap=document.createElement("div");macWrap.className="macedit";const lab=document.createElement("label");lab.className="fieldlabel";lab.textContent="MAC-адрес";const inp=document.createElement("input");inp.className="field";inp.type="text";inp.autocapitalize="characters";inp.value=r.mac||"";inp.placeholder="Введите или исправьте MAC-адрес";inp.addEventListener("input",()=>{r.mac=inp.value;scheduleAutosave()});macWrap.append(lab,inp);info.append(macWrap)}
   const pill=document.createElement("span");pill.className="pill "+(status==="Да"?"yes":status==="Нет"?"no":"");pill.textContent=status||"Не проверено";
