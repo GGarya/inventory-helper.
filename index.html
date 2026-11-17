@@ -36,7 +36,7 @@ input[type=file]{display:none}.filebtn{display:block;text-align:center;backgroun
 .filters button.active{background:#172033;color:white}
 .item{background:white;border:1px solid #e0e5ec;border-radius:14px;padding:15px;margin:10px 0;max-width:100%;min-width:0;overflow:hidden}
 .itemtop{display:flex;gap:10px;justify-content:space-between;align-items:flex-start;min-width:0;max-width:100%}
-.iteminfo{flex:1 1 auto;min-width:0;max-width:100%}.itemname{font-weight:750;font-size:17px;line-height:1.4;min-width:0;max-width:100%;overflow-wrap:anywhere;word-break:break-word;margin-bottom:9px}.item-meta{display:grid;gap:6px;margin-top:2px;min-width:0;max-width:100%}.meta-row{display:grid;grid-template-columns:104px minmax(0,1fr);gap:8px;align-items:start;font-size:13px;line-height:1.45;min-width:0}.meta-label{color:#8791a1;font-weight:600}.meta-value{color:#475569;overflow-wrap:anywhere;word-break:break-word;min-width:0}
+.iteminfo{flex:1 1 auto;min-width:0;max-width:100%}.itemname{font-weight:750;font-size:19px;line-height:1.4;min-width:0;max-width:100%;overflow-wrap:anywhere;word-break:break-word;margin-bottom:8px}.item-meta{display:block;margin-top:2px;color:#7b8493;font-size:13px;line-height:1.5;min-width:0;max-width:100%;overflow-wrap:anywhere;word-break:break-word}.item-meta .meta-separator{color:#a0a8b5;padding:0 4px}
 .pill{font-size:12px;padding:5px 8px;border-radius:99px;background:#edf1f6;white-space:nowrap;flex:0 0 auto;max-width:100%}
 .pill.yes{background:#e3f5e9;color:#146c35}.pill.no{background:#fde8e8;color:#a32626}
 .actions{display:flex;gap:8px;margin-top:14px}.actions button{flex:1;padding:11px;font-size:15px}
@@ -461,16 +461,12 @@ function render(){
   const info=document.createElement("div");info.className="iteminfo";
   const nm=document.createElement("div");nm.className="itemname";nm.textContent="№ "+r.num+". "+(r.name||r.type||"Оборудование");
   const meta=document.createElement("div");meta.className="item-meta";
-  const addMetaRow=(label,value)=>{
-   if(!value)return;
-   const line=document.createElement("div");line.className="meta-row";
-   const key=document.createElement("span");key.className="meta-label";key.textContent=label;
-   const val=document.createElement("span");val.className="meta-value";val.textContent=value;
-   line.append(key,val);meta.append(line);
-  };
-  addMetaRow("Тип",""+(r.type||""));
-  addMetaRow("Инв. номер",""+(r.inv||""));
-  addMetaRow("Серийный №",""+(r.serial||""));
+  // Компактная строка сведений, как в целевом макете: тип · инвентарный · серийный номер.
+  const metaParts=[r.type,r.inv,r.serial].filter(value=>String(value||"").trim());
+  metaParts.forEach((value,index)=>{
+   if(index){const separator=document.createElement("span");separator.className="meta-separator";separator.textContent="·";meta.append(separator)}
+   const part=document.createElement("span");part.textContent=value;meta.append(part);
+  });
   info.append(nm,meta);
   if(r.macCell){const macWrap=document.createElement("div");macWrap.className="macedit";const lab=document.createElement("label");lab.className="fieldlabel";lab.textContent="MAC-адрес";const inp=document.createElement("input");inp.className="field";inp.type="text";inp.autocapitalize="characters";inp.value=r.mac||"";inp.placeholder="Введите или исправьте MAC-адрес";inp.addEventListener("input",()=>{r.mac=inp.value;scheduleAutosave()});macWrap.append(lab,inp);info.append(macWrap)}
   const pill=document.createElement("span");pill.className="pill "+(status==="Да"?"yes":status==="Нет"?"no":"");pill.textContent=status||"Не проверено";
