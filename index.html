@@ -96,7 +96,7 @@ footer{font-size:12px;color:#778195;text-align:center;margin:20px 0}
    <li><strong>Используйте поиск и фильтры.</strong> В строке поиска можно искать по номеру, названию, инвентарному или серийному номеру. Кнопки «Все», «Не проверено», «Да» и «Нет» показывают только нужные позиции.</li>
    <li><strong>Исправляйте MAC-адрес.</strong> Если у позиции есть поле MAC-адрес, его можно отредактировать прямо в карточке оборудования.</li>
    <li><strong>Добавляйте оборудование.</strong> В блоке «Добавить оборудование» заполните известные поля. Укажите хотя бы тип оборудования или название, затем нажмите «Добавить оборудование». Новая строка попадёт в конец таблицы Word.</li>
-   <li><strong>Скачайте результат.</strong> Нажмите «Скачать заполненный Word (.docx)». В копию будут внесены отметки «Да» и «Нет»; непроверенные позиции останутся пустыми. Исходный файл не перезаписывается.</li>
+   <li><strong>Скачайте результат.</strong> Нажмите «Скачать заполненный Word (.docx)». В копию будут внесены отметки «Да» и «Нет»; непроверенные позиции останутся пустыми. В разделе «Итоги проверки» автоматически появятся количество проверенных позиций, количество присутствующих и отсутствующих, а также текущая дата. Исходный файл не перезаписывается.</li>
   </ol>
   <p><strong>Статистика сверху списка</strong> показывает общее количество позиций, сколько ещё не проверено и сколько отмечено как «Да» или «Нет». Полоса показывает ход проверки.</p>
   <p><strong>Автосохранение</strong> включено автоматически. Можно закрыть страницу и продолжить позже в том же браузере на том же устройстве. При повторном открытии выберите тот же исходный Word-файл, если сайт попросит его.</p>
@@ -162,7 +162,7 @@ footer{font-size:12px;color:#778195;text-align:center;margin:20px 0}
 </div>
 <div class="panel">
 <button class="primary" id="save">Скачать заполненный Word (.docx)</button>
-<p class="note">В Word будут записаны выбранные значения «Да» и «Нет». Непроверенные строки останутся пустыми.</p>
+<p class="note">В Word будут записаны отметки «Да» и «Нет», заполнены итоги проверки и указана текущая дата. Непроверенные строки останутся пустыми.</p>
 <button class="secondary" id="reset" style="width:100%;margin-top:8px">Сбросить все отметки</button>
 </div>
 </section>
@@ -569,9 +569,29 @@ $("addEquipment").addEventListener("click",()=>{
  }catch(err){showMessage("Не удалось добавить оборудование: "+err.message)}
 });
 function escapeHtml(value){return String(value??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;", "'":"&#39;"}[ch]));}
+function fillInspectionSummary(){
+  const yes=Object.values(statuses).filter(v=>v==="Да").length;
+  const no=Object.values(statuses).filter(v=>v==="Нет").length;
+  const checked=yes+no;
+  const today=new Date().toLocaleDateString("ru-RU");
+  const paragraphs=Array.from(xmlDoc.getElementsByTagNameNS("*","p"));
+  const replacements=[
+    {match:"Всего проверено единиц оборудования",value:String(checked)},
+    {match:"Присутствует на месте",value:String(yes)},
+    {match:"Отсутствует:",value:String(no)},
+    {match:"Дата:",value:today}
+  ];
+  for(const item of replacements){
+    const paragraph=paragraphs.find(p=>textOf(p).includes(item.match));
+    if(!paragraph)continue;
+    const target=Array.from(paragraph.getElementsByTagNameNS("*","t")).find(t=>t.textContent.includes("_"));
+    if(target)target.textContent=item.value;
+  }
+}
 $("save").addEventListener("click",async()=>{
  try{
   for(const r of records){setCellText(r.statusCell,statuses[r.rowIndex]||"");if(r.macCell)setCellText(r.macCell,r.mac||"");}
+  fillInspectionSummary();
   const serializer=new XMLSerializer();zipOriginal.file("word/document.xml",serializer.serializeToString(xmlDoc));
   const zipBlob=await zipOriginal.generateAsync({type:"blob",compression:"DEFLATE"});
   const mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document";
