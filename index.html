@@ -7,10 +7,10 @@
 <title>Инвентаризация</title>
 <style>
 :root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#172033;background:#f3f5f8}
-*{box-sizing:border-box;min-width:0}html{width:100%;max-width:100%;overflow-x:hidden}body{margin:0;padding:16px 12px 40px;width:100%;max-width:850px;margin-inline:auto;overflow-x:hidden}
+*{box-sizing:border-box}body{margin:0;padding:16px 12px 40px;max-width:850px;margin-inline:auto}
 h1{font-size:25px;margin:8px 0 5px}.sub{color:#687386;font-size:14px;margin:0 0 18px}
 .topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 4px}.topbar h1{margin:8px 0 5px}.admin-login{margin-left:auto;flex:0 0 auto}.admin-login button{background:#edf1f6;color:#475569;border:1px solid #dfe5ed;border-radius:999px;padding:8px 12px;font-size:12px;font-weight:600;white-space:nowrap}.login-status{font-size:11px;color:#778195;text-align:right;min-height:0;margin:0 2px 8px}
-.panel{background:white;border:1px solid #e0e5ec;border-radius:16px;padding:15px;margin:12px 0;max-width:100%;min-width:0;box-shadow:0 2px 8px #17203308}
+.panel{background:white;border:1px solid #e0e5ec;border-radius:16px;padding:15px;margin:12px 0;box-shadow:0 2px 8px #17203308}
 
 .help{background:#fff;border:1px solid #e0e5ec;border-radius:14px;margin:12px 0;padding:0 14px;box-shadow:0 2px 8px #17203308}
 .help summary{cursor:pointer;list-style:none;font-weight:700;padding:14px 24px 14px 0;position:relative}
@@ -31,17 +31,18 @@ input[type=file]{display:none}.filebtn{display:block;text-align:center;backgroun
 .stat b{font-size:16px}
 @media(max-width:560px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .bar{height:8px;background:#e8ecf2;border-radius:99px;overflow:hidden}.fill{height:100%;background:#172033;width:0}
-.filters{display:flex;gap:6px;overflow-x:auto;overflow-y:hidden;max-width:100%;min-width:0;margin:12px 0;-webkit-overflow-scrolling:touch}
+.filters{display:flex;gap:6px;overflow:auto;margin:12px 0}
 .filters button{white-space:nowrap;background:#edf1f6;color:#334155;padding:10px 13px;font-size:14px}
 .filters button.active{background:#172033;color:white}
-.item{background:white;border:1px solid #e0e5ec;border-radius:14px;padding:15px;margin:10px 0;max-width:100%;min-width:0;overflow:hidden}
-.itemtop{display:flex;gap:10px;justify-content:space-between;align-items:flex-start;min-width:0;max-width:100%}
-.iteminfo{flex:1 1 auto;min-width:0;max-width:100%}.itemname{font-weight:750;font-size:19px;line-height:1.4;min-width:0;max-width:100%;overflow-wrap:anywhere;word-break:break-word;margin-bottom:8px}.item-meta{display:block;margin-top:2px;color:#7b8493;font-size:13px;line-height:1.5;min-width:0;max-width:100%;overflow-wrap:anywhere;word-break:break-word}.item-meta .meta-separator{color:#a0a8b5;padding:0 4px}
-.pill{font-size:12px;padding:5px 8px;border-radius:99px;background:#edf1f6;white-space:nowrap;flex:0 0 auto;max-width:100%}
+.item{position:relative;background:white;border:1px solid #e0e5ec;border-radius:14px;padding:13px;margin:9px 0}
+.itemtop{display:flex;gap:10px;justify-content:space-between;align-items:flex-start;padding-right:30px}
+.delete-item{position:absolute;top:7px;right:7px;width:28px;height:28px;padding:0;border-radius:8px;background:#fde8e8;color:#a32626;font-size:20px;line-height:1;display:flex;align-items:center;justify-content:center}
+.itemname{font-weight:700;line-height:1.35}.meta{color:#687386;font-size:13px;margin-top:5px;overflow-wrap:anywhere}
+.pill{font-size:12px;padding:5px 8px;border-radius:99px;background:#edf1f6;white-space:nowrap}
 .pill.yes{background:#e3f5e9;color:#146c35}.pill.no{background:#fde8e8;color:#a32626}
-.actions{display:flex;gap:8px;margin-top:14px}.actions button{flex:1;padding:11px;font-size:15px}
-.yesbtn{background:#e3f5e9;color:#146c35}.nobtn{background:#fde8e8;color:#a32626}.clearbtn{background:#edf1f6;color:#475569;flex:0 0 48px!important}.deletebtn{background:#f1f3f6;color:#64748b;flex:0 0 28px!important;width:28px;height:28px;padding:0!important;border-radius:8px;font-size:19px!important;line-height:1;font-weight:400;display:flex;align-items:center;justify-content:center}.item-tools{display:flex;align-items:center;gap:7px;flex:0 0 auto}
-.note{font-size:13px;color:#687386;line-height:1.45}.autosave{display:flex;align-items:center;gap:7px;font-size:13px;color:#687386;margin-top:9px}.autosave-dot{width:8px;height:8px;border-radius:50%;background:#16a34a;display:inline-block}.fieldlabel{display:block;font-size:13px;font-weight:650;color:#475569;margin:9px 0 5px}.field{width:100%;padding:11px 12px;border:1px solid #d5dce6;border-radius:10px;font-size:16px;background:#fff;color:#172033}.macedit{margin-top:10px}.addgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;min-width:0;max-width:100%}.addgrid .wide{grid-column:1/-1}.hidden{display:none!important}
+.actions{display:flex;gap:8px;margin-top:11px}.actions button{flex:1;padding:11px;font-size:15px}
+.yesbtn{background:#e3f5e9;color:#146c35}.nobtn{background:#fde8e8;color:#a32626}.clearbtn{background:#edf1f6;color:#475569;flex:0 0 48px!important}
+.note{font-size:13px;color:#687386;line-height:1.45}.autosave{display:flex;align-items:center;gap:7px;font-size:13px;color:#687386;margin-top:9px}.autosave-dot{width:8px;height:8px;border-radius:50%;background:#16a34a;display:inline-block}.fieldlabel{display:block;font-size:13px;font-weight:650;color:#475569;margin:9px 0 5px}.field{width:100%;padding:11px 12px;border:1px solid #d5dce6;border-radius:10px;font-size:16px;background:#fff;color:#172033}.macedit{margin-top:10px}.addgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.addgrid .wide{grid-column:1/-1}.hidden{display:none!important}
 #message{font-size:14px;color:#475569;margin-top:10px;white-space:pre-wrap}
 footer{font-size:12px;color:#778195;text-align:center;margin:20px 0}
 
@@ -69,7 +70,7 @@ footer{font-size:12px;color:#778195;text-align:center;margin:20px 0}
  <div class="help-content">
   <ol>
    <li><strong>Откройте документ.</strong> Нажмите «Выбрать Word-файл (.docx)» и выберите исходный файл инвентаризации в формате DOCX. Дождитесь загрузки списка оборудования.</li>
-   <li><strong>Проверьте каждую позицию.</strong> Найдите оборудование в списке и нажмите «Да», если оно фактически присутствует, или «Нет», если его нет. Кнопка «×» рядом со статусом удаляет позицию из списка и итогового Word-файла. Кнопка «×» внизу карточки снимает отметку.</li>
+   <li><strong>Проверьте каждую позицию.</strong> Найдите оборудование в списке и нажмите «Да», если оно фактически присутствует, или «Нет», если его нет. Кнопка «×» снимает отметку, если вы ошиблись или хотите проверить позицию позже.</li>
    <li><strong>Используйте поиск и фильтры.</strong> В строке поиска можно искать по номеру, названию, инвентарному или серийному номеру. Кнопки «Все», «Не проверено», «Да» и «Нет» показывают только нужные позиции.</li>
    <li><strong>Исправляйте MAC-адрес.</strong> Если у позиции есть поле MAC-адрес, его можно отредактировать прямо в карточке оборудования.</li>
    <li><strong>Добавляйте оборудование.</strong> В блоке «Добавить оборудование» заполните известные поля. Укажите хотя бы тип оборудования или название, затем нажмите «Добавить оборудование». Новая строка попадёт в конец таблицы Word.</li>
@@ -396,7 +397,7 @@ function parseWorkspace(xmlText,filename,restoredStatuses={}){
  const tables=Array.from(xmlDoc.getElementsByTagNameNS("*","tbl"));let found=null,headerIndex=-1;
  for(const table of tables){const rows=Array.from(table.children).filter(x=>x.localName==="tr");for(let ri=0;ri<rows.length;ri++){const cs=cellsOf(rows[ri]),vals=cs.map(textOf);const ci=vals.findIndex(v=>norm(v).includes("фактическое присутствие")||norm(v).includes("фактическое наличие"));if(ci>=0){found=table;equipmentTable=table;headerIndex=ri;statusIndex=ci;macIndex=vals.findIndex(v=>norm(v).includes("mac адрес")||norm(v).includes("mac-адрес"));headerCells=cs;tableRows=rows;break}}if(found)break}
  if(!found)throw new Error("Не найден столбец «Фактическое присутствие/отсутствие». Нужен DOCX с таблицей инвентаризации.");
- records=[];for(let ri=headerIndex+1;ri<tableRows.length;ri++){const cs=cellsOf(tableRows[ri]),vals=cs.map(textOf),num=vals[0]||"";if(!/^\d+$/.test(num))continue;records.push({rowIndex:ri,row:tableRows[ri],num,type:vals[1]||"",name:vals[2]||"",inv:vals[3]||"",serial:vals[4]||"",mac:macIndex>=0?(vals[macIndex]||""):"",statusCell:cs[statusIndex],macCell:macIndex>=0?cs[macIndex]:null,cells:cs})}
+ records=[];for(let ri=headerIndex+1;ri<tableRows.length;ri++){const cs=cellsOf(tableRows[ri]),vals=cs.map(textOf),num=vals[0]||"";if(!/^\d+$/.test(num))continue;records.push({rowIndex:ri,num,type:vals[1]||"",name:vals[2]||"",inv:vals[3]||"",serial:vals[4]||"",mac:macIndex>=0?(vals[macIndex]||""):"",statusCell:cs[statusIndex],macCell:macIndex>=0?cs[macIndex]:null,cells:cs})}
  if(!records.length)throw new Error("В таблице не найдены строки оборудования с нумерацией.");
  statuses=restoredStatuses||{};sourceName=filename.replace(/\.docx$/i,"");$("filename").textContent=filename+" · "+records.length+" позиций";$("workspace").classList.remove("hidden");render();
 }
@@ -458,66 +459,40 @@ function render(){
  for(const r of visible){
   const status=statuses[r.rowIndex]||"",div=document.createElement("div");div.className="item";
   const top=document.createElement("div");top.className="itemtop";
-  const info=document.createElement("div");info.className="iteminfo";
+  const info=document.createElement("div");
   const nm=document.createElement("div");nm.className="itemname";nm.textContent="№ "+r.num+". "+(r.name||r.type||"Оборудование");
-  const meta=document.createElement("div");meta.className="item-meta";
-  // Компактная строка сведений, как в целевом макете: тип · инвентарный · серийный номер.
-  const metaParts=[r.type,r.inv,r.serial].filter(value=>String(value||"").trim());
-  metaParts.forEach((value,index)=>{
-   if(index){const separator=document.createElement("span");separator.className="meta-separator";separator.textContent="·";meta.append(separator)}
-   const part=document.createElement("span");part.textContent=value;meta.append(part);
-  });
+  const meta=document.createElement("div");meta.className="meta";meta.textContent=[r.type,r.inv,r.serial].filter(Boolean).join(" · ");
   info.append(nm,meta);
   if(r.macCell){const macWrap=document.createElement("div");macWrap.className="macedit";const lab=document.createElement("label");lab.className="fieldlabel";lab.textContent="MAC-адрес";const inp=document.createElement("input");inp.className="field";inp.type="text";inp.autocapitalize="characters";inp.value=r.mac||"";inp.placeholder="Введите или исправьте MAC-адрес";inp.addEventListener("input",()=>{r.mac=inp.value;scheduleAutosave()});macWrap.append(lab,inp);info.append(macWrap)}
   const pill=document.createElement("span");pill.className="pill "+(status==="Да"?"yes":status==="Нет"?"no":"");pill.textContent=status||"Не проверено";
-  const tools=document.createElement("div");tools.className="item-tools";
-  const del=document.createElement("button");del.type="button";del.className="deletebtn";del.textContent="×";del.title="Удалить оборудование";del.setAttribute("aria-label","Удалить оборудование");
-  del.addEventListener("click",()=>{
-   if(!confirm("Удалить позицию «"+(r.name||r.type||"Оборудование")+"» (№ "+r.num+") из списка? Она также исчезнет из скачанного Word-файла."))return;
-   const oldStatuses=new Map();
-   for(const item of records){if(item!==r){const st=statuses[item.rowIndex];if(st)oldStatuses.set(item,st);}}
-   if(r.row&&r.row.parentNode)r.row.parentNode.removeChild(r.row);
-   tableRows=tableRows.filter(row=>row!==r.row);
+  top.append(info,pill);div.append(top);
+  const deleteButton=document.createElement("button");
+  deleteButton.type="button";deleteButton.className="delete-item";
+  deleteButton.textContent="×";deleteButton.title="Удалить оборудование";
+  deleteButton.setAttribute("aria-label","Удалить оборудование № "+r.num);
+  deleteButton.addEventListener("click",()=>{
+   if(!confirm("Удалить оборудование № "+r.num+" из инвентаризации?"))return;
+   const oldStatuses=new Map(records.map(item=>[item,statuses[item.rowIndex]||""]));
+   r.cells[0].parentNode.remove();
    records=records.filter(item=>item!==r);
-   statuses={};
-   records.forEach(item=>{
-    item.rowIndex=tableRows.indexOf(item.row);
-    item.num=String(records.indexOf(item)+1);
-    const cells=cellsOf(item.row);
-    item.cells=cells;item.statusCell=cells[statusIndex];item.macCell=macIndex>=0?cells[macIndex]:null;
-    setCellText(cells[0],item.num);
-    const st=oldStatuses.get(item);if(st)statuses[item.rowIndex]=st;
+   tableRows=Array.from(equipmentTable.children).filter(x=>x.localName==="tr");
+   const nextStatuses={};
+   records.forEach((item,index)=>{
+    item.rowIndex=tableRows.indexOf(item.cells[0].parentNode);
+    item.num=String(index+1);
+    setCellText(item.cells[0],item.num);
+    const savedStatus=oldStatuses.get(item);
+    if(savedStatus)nextStatuses[item.rowIndex]=savedStatus;
    });
+   statuses=nextStatuses;
    $("filename").textContent=sourceName+".docx · "+records.length+" позиций";
-   showMessage("Позиция удалена из списка. Изменение сохранено и попадёт в итоговый Word-файл.");
    render();scheduleAutosave();
+   showMessage("Оборудование удалено из инвентаризации.");
   });
-  tools.append(pill,del);
-  top.append(info,tools);div.append(top);
+  div.append(deleteButton);
   const actions=document.createElement("div");actions.className="actions";
   for(const [label,val,cls] of [["Да","Да","yesbtn"],["Нет","Нет","nobtn"],["×","","clearbtn"]]){
-   const b=document.createElement("button");b.textContent=label;b.className=cls;b.addEventListener("click",()=>{
-     if(val){statuses[r.rowIndex]=val;render();scheduleAutosave();return}
-     if(val===""){delete statuses[r.rowIndex];render();scheduleAutosave();return}
-     if(!confirm("Удалить позицию «"+(r.name||r.type||"Оборудование")+"» (№ "+r.num+") из списка? Она также исчезнет из скачанного Word-файла."))return;
-     const oldStatuses=new Map();
-     for(const item of records){if(item!==r){const st=statuses[item.rowIndex];if(st)oldStatuses.set(item,st);}}
-     if(r.row&&r.row.parentNode)r.row.parentNode.removeChild(r.row);
-     tableRows=tableRows.filter(row=>row!==r.row);
-     records=records.filter(item=>item!==r);
-     statuses={};
-     records.forEach(item=>{
-       item.rowIndex=tableRows.indexOf(item.row);
-       item.num=String(records.indexOf(item)+1);
-       const cells=cellsOf(item.row);
-       item.cells=cells;item.statusCell=cells[statusIndex];item.macCell=macIndex>=0?cells[macIndex]:null;
-       setCellText(cells[0],item.num);
-       const st=oldStatuses.get(item);if(st)statuses[item.rowIndex]=st;
-     });
-     $("filename").textContent=sourceName+".docx · "+records.length+" позиций";
-     showMessage("Позиция удалена из списка. Изменение сохранено и попадёт в итоговый Word-файл.");
-     render();scheduleAutosave();
-    });actions.append(b);
+   const b=document.createElement("button");b.textContent=label;b.className=cls;b.addEventListener("click",()=>{if(val)statuses[r.rowIndex]=val;else delete statuses[r.rowIndex];render();scheduleAutosave()});actions.append(b);
   }
   div.append(actions);list.append(div);
  }
@@ -538,7 +513,7 @@ $("addEquipment").addEventListener("click",()=>{
   for(let i=0;i<newCells.length;i++)setCellText(newCells[i],values[i]||"");
   equipmentTable.appendChild(newRow);
   const rowIndex=tableRows.length;tableRows.push(newRow);
-  records.push({rowIndex,row:newRow,num:values[0],type,name,inv,serial,mac,statusCell:newCells[statusIndex],macCell:macIndex>=0?newCells[macIndex]:null,cells:newCells});
+  records.push({rowIndex,num:values[0],type,name,inv,serial,mac,statusCell:newCells[statusIndex],macCell:macIndex>=0?newCells[macIndex]:null,cells:newCells});
   if(status)statuses[rowIndex]=status;
   $("newType").value=$("newName").value=$("newInv").value=$("newSerial").value=$("newMac").value="";
   $("newStatus").value="";
