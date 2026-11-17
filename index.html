@@ -166,8 +166,8 @@ html[data-theme="dark"] .theme-toggle[aria-pressed="true"] .theme-switch{backgro
 <label class="filebtn" for="docxFile">Выбрать Word-файл (.docx)</label>
 <input id="docxFile" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
 <div id="filename" class="note" style="margin-top:9px">Файл ещё не выбран</div>
-<button class="secondary" id="deleteDraft" style="width:100%;margin-top:10px">Удалить сохранённую копию</button>
-<p class="note">Удаляет автосохранение с этого устройства. Исходный Word-файл и скачанные документы не затрагиваются.</p>
+<button class="secondary hidden" id="deleteDraft" style="width:100%;margin-top:10px">Удалить сохранённую копию</button>
+<p class="note hidden" id="deleteDraftNote">Удаляет автосохранение с этого устройства. Исходный Word-файл и скачанные документы не затрагиваются.</p>
 <div id="message"></div>
 </section>
 
@@ -465,6 +465,7 @@ $("deleteDraft").addEventListener("click",async()=>{
 window.addEventListener("pagehide",saveBackupOnExit);
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden")saveBackupOnExit()});
 function parseWorkspace(xmlText,filename,restoredStatuses={}){
+ $("deleteDraft").classList.remove("hidden");$("deleteDraftNote").classList.remove("hidden");
  document.body.classList.remove("start-mode");document.body.classList.add("has-workspace");
  xmlDoc=new DOMParser().parseFromString(xmlText,"application/xml");
  if(xmlDoc.getElementsByTagName("parsererror").length)throw new Error("Не удалось прочитать структуру Word-документа.");
