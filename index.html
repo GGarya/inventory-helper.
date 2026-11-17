@@ -80,7 +80,11 @@ footer{font-size:12px;color:#778195;text-align:center;margin:20px 0}
 /* Переключаемая тема в стиле системного переключателя iPhone */
 .theme-toggle{position:absolute;right:2px;top:50%;transform:translateY(-50%);padding:4px!important;border:0!important;background:transparent!important;box-shadow:none!important;min-width:52px;min-height:36px;display:flex;align-items:center;justify-content:center}
 .theme-switch{display:block;position:relative;width:48px;height:28px;border-radius:99px;background:#d5dbe4;transition:background .2s ease;box-shadow:inset 0 0 0 1px #0000000c}
-.theme-knob{position:absolute;left:3px;top:3px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 1px 3px #0003;transition:transform .2s ease}
+.theme-knob{position:absolute;left:3px;top:3px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 1px 3px #0003;transition:transform .2s ease;z-index:2}
+.theme-symbol{position:absolute;top:0;height:28px;width:18px;display:flex;align-items:center;justify-content:center;font-size:12px;line-height:1;pointer-events:none;z-index:1}
+.theme-sun{left:4px}.theme-moon{right:4px}
+.theme-toggle[aria-pressed="false"] .theme-moon{opacity:1}
+.theme-toggle[aria-pressed="true"] .theme-sun{opacity:1}
 .theme-toggle[aria-pressed="true"] .theme-switch{background:#0a84ff}
 .theme-toggle[aria-pressed="true"] .theme-knob{transform:translateX(20px)}
 @media(max-width:560px){.topbar{padding-right:48px}.theme-toggle{right:0}}
@@ -122,7 +126,7 @@ html[data-theme="dark"] .theme-toggle[aria-pressed="true"] .theme-switch{backgro
 <body class="start-mode">
 <div class="topbar">
  <h1>Инвентаризация</h1>
- <button id="themeToggle" class="theme-toggle" type="button" aria-label="Переключить тёмную тему" aria-pressed="false" title="Тёмная тема"><span class="theme-switch"><span class="theme-knob"></span></span></button>
+ <button id="themeToggle" class="theme-toggle" type="button" aria-label="Переключить тёмную тему" aria-pressed="false" title="Тёмная тема"><span class="theme-switch"><span class="theme-symbol theme-sun" aria-hidden="true">☀️</span><span class="theme-symbol theme-moon" aria-hidden="true">🌙</span><span class="theme-knob"></span></span></button>
  <div id="adminLoginPanel" class="admin-login">
   <button id="adminLogin" type="button" aria-label="Вход администратора">Войти</button>
  </div>
@@ -469,7 +473,13 @@ function parseWorkspace(xmlText,filename,restoredStatuses={}){
  if(!found)throw new Error("Не найден столбец «Фактическое присутствие/отсутствие». Нужен DOCX с таблицей инвентаризации.");
  records=[];for(let ri=headerIndex+1;ri<tableRows.length;ri++){const cs=cellsOf(tableRows[ri]),vals=cs.map(textOf),num=vals[0]||"";if(!/^\d+$/.test(num))continue;records.push({rowIndex:ri,num,type:vals[1]||"",name:vals[2]||"",inv:vals[3]||"",serial:vals[4]||"",mac:macIndex>=0?(vals[macIndex]||""):"",statusCell:cs[statusIndex],macCell:macIndex>=0?cs[macIndex]:null,cells:cs})}
  if(!records.length)throw new Error("В таблице не найдены строки оборудования с нумерацией.");
- statuses=restoredStatuses||{};sourceName=filename.replace(/\.docx$/i,"");$("filename").textContent=filename+" · "+records.length+" позиций";$("workspace").classList.remove("hidden");render();
+ const loadedStatuses={};
+ records.forEach(r=>{
+  const cellStatus=textOf(r.statusCell);
+  if(cellStatus==="Да"||cellStatus==="Нет")loadedStatuses[r.rowIndex]=cellStatus;
+ });
+ statuses={...loadedStatuses,...(restoredStatuses||{})};
+ sourceName=filename.replace(/\.docx$/i,"");$("filename").textContent=filename+" · "+records.length+" позиций";$("workspace").classList.remove("hidden");render();
 }
 function norm(s){return (s||"").replace(/\s+/g," ").trim().toLowerCase()}
 function textOf(el){return Array.from(el.getElementsByTagNameNS("*","t")).map(x=>x.textContent).join("").replace(/\u00a0/g," ").trim()}
@@ -612,8 +622,8 @@ $("addEquipment").addEventListener("click",()=>{
 });
 function escapeHtml(value){return String(value??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;", "'":"&#39;"}[ch]));}
 function fillInspectionSummary(){
-  const yes=Object.values(statuses).filter(v=>v==="Да").length;
-  const no=Object.values(statuses).filter(v=>v==="Нет").length;
+  const yes=records.filter(r=>statuses[r.rowIndex]==="Да").length;
+  const no=records.filter(r=>statuses[r.rowIndex]==="Нет").length;
   const checked=yes+no;
   const today=new Date().toLocaleDateString("ru-RU");
   const paragraphs=Array.from(xmlDoc.getElementsByTagNameNS("*","p"));
@@ -626,8 +636,11 @@ function fillInspectionSummary(){
   for(const item of replacements){
     const paragraph=paragraphs.find(p=>textOf(p).includes(item.match));
     if(!paragraph)continue;
-    const target=Array.from(paragraph.getElementsByTagNameNS("*","t")).find(t=>t.textContent.includes("_"));
-    if(target)target.textContent=target.textContent.replace(/_+/g,item.value);
+    const texts=Array.from(paragraph.getElementsByTagNameNS("*","t"));
+    if(!texts.length)continue;
+    let target=[...texts].reverse().find(t=>/_+|\\d{1,2}\\.\\d{1,2}\\.\\d{4}|\\d+\\s*$/.test(t.textContent));
+    if(!target)target=texts[texts.length-1];
+    target.textContent=target.textContent.replace(/(?:_+|\\d{1,2}\\.\\d{1,2}\\.\\d{4}|\\d+)\\s*$/,item.value);
   }
 }
 $("save").addEventListener("click",async()=>{
@@ -644,7 +657,7 @@ $("save").addEventListener("click",async()=>{
   if(typeof File!=="undefined" && navigator.share && navigator.canShare){
    const file=new File([blob],filename,{type:mime});
    if(navigator.canShare({files:[file]})){
-    await navigator.share({files:[file],title:filename});
+    await navigator.share({files:[file]});
     showMessage("Файл Word подготовлен. В меню iPhone выберите «Сохранить в Файлы», чтобы сохранить документ .docx.");
     return;
    }
