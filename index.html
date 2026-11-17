@@ -34,7 +34,15 @@ input[type=file]{display:none}.filebtn{display:block;text-align:center;backgroun
 .stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;font-size:14px;margin:10px 0}
 .stat{background:#f2f4f7;padding:10px 12px;border-radius:10px;display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0;white-space:nowrap}
 .stat b{font-size:16px}
-@media(max-width:560px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.panel{padding:12px}.addgrid{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}input,select,button{max-width:100%}}
+@media(max-width:560px){
+ body{padding-left:6px;padding-right:6px}
+ .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .panel{padding:10px}
+ #workspace>.panel:nth-child(2){padding:8px}
+ .item{margin:8px 0;padding:12px}
+ .addgrid{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+ input,select,button{max-width:100%}
+}
 .bar{height:8px;background:#e8ecf2;border-radius:99px;overflow:hidden}.fill{height:100%;background:#172033;width:0}
 .filters{display:flex;gap:6px;overflow:auto;margin:12px 0}
 .filters button{white-space:nowrap;background:#edf1f6;color:#334155;padding:10px 13px;font-size:14px}
