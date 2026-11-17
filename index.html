@@ -8,9 +8,14 @@
 <style>
 :root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#172033;background:#f3f5f8}
 *{box-sizing:border-box;min-width:0}html,body{width:100%;max-width:100%;overflow-x:hidden}body{margin:0;padding:16px 12px 40px;max-width:850px;margin-inline:auto}
+body.start-mode{min-height:100vh;min-height:100svh;display:flex;flex-direction:column}
 h1{font-size:25px;margin:8px 0 5px}.sub{color:#687386;font-size:14px;margin:0 0 18px}
 .topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 4px}.topbar h1{margin:8px 0 5px}.admin-login{margin-left:auto;flex:0 0 auto}.admin-login button{background:#edf1f6;color:#475569;border:1px solid #dfe5ed;border-radius:999px;padding:8px 12px;font-size:12px;font-weight:600;white-space:nowrap}.login-status{font-size:11px;color:#778195;text-align:right;min-height:0;margin:0 2px 8px}
+@media(max-width:560px){.topbar{flex-direction:column;align-items:stretch;gap:5px;margin-bottom:8px}.topbar h1{text-align:center;font-size:27px;line-height:1.2;margin:8px 0 4px}.admin-login{align-self:flex-end;margin:0}.admin-login button{padding:9px 17px;font-size:14px}.login-status{text-align:center;margin:0 2px 8px}}
 .panel{background:white;border:1px solid #e0e5ec;border-radius:16px;padding:15px;margin:12px 0;box-shadow:0 2px 8px #17203308;min-width:0;max-width:100%;overflow:hidden}
+.start-panel{width:100%;max-width:560px;margin:clamp(22px,5vh,52px) auto}
+.start-panel .filebtn,.start-panel #deleteDraft{min-height:56px;display:flex;align-items:center;justify-content:center}
+body.start-mode footer{margin-top:auto;padding-bottom:env(safe-area-inset-bottom)}
 
 .help{background:#fff;border:1px solid #e0e5ec;border-radius:14px;margin:12px 0;padding:0 14px;box-shadow:0 2px 8px #17203308}
 .help summary{cursor:pointer;list-style:none;font-weight:700;padding:14px 24px 14px 0;position:relative}
@@ -52,9 +57,20 @@ footer{font-size:12px;color:#778195;text-align:center;margin:20px 0}
 @media(max-width:560px){.user-stats{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin:12px 0 10px}.user-stat{padding:11px 8px 10px;min-height:96px;border-radius:13px}.user-stat span{font-size:11px;min-height:31px}.user-stat b{font-size:22px;margin-top:8px}}
 @media(max-width:360px){.user-stats{gap:5px}.user-stat{padding:10px 6px;min-height:92px}.user-stat span{font-size:10px}.user-stat b{font-size:20px}}
 
+
+.mobile-nav{display:none}
+@media(max-width:560px){
+ body.has-workspace{padding-bottom:calc(112px + env(safe-area-inset-bottom))}
+ body.has-workspace .mobile-nav{position:fixed;z-index:1000;left:0;right:0;bottom:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:rgba(255,255,255,.96);border-top:1px solid #e1e6ed;box-shadow:0 -5px 20px rgba(23,32,51,.08);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+ body.has-workspace .mobile-nav button{min-width:0;min-height:54px;padding:7px 4px;border-radius:13px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:12px;line-height:1.15;white-space:nowrap}
+ body.has-workspace .mobile-nav .nav-search,body.has-workspace .mobile-nav .nav-add{background:#edf1f6;color:#334155}
+ body.has-workspace .mobile-nav .nav-save{background:#172033;color:#fff}
+ body.has-workspace .mobile-nav .nav-icon{font-size:19px;line-height:1}
+}
+
 </style>
 </head>
-<body>
+<body class="start-mode">
 <div class="topbar">
  <h1>Инвентаризация</h1>
  <div id="adminLoginPanel" class="admin-login">
@@ -92,7 +108,7 @@ footer{font-size:12px;color:#778195;text-align:center;margin:20px 0}
 </section>
 
 
-<section class="panel">
+<section class="panel start-panel">
 <label class="filebtn" for="docxFile">Выбрать Word-файл (.docx)</label>
 <input id="docxFile" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
 <div id="filename" class="note" style="margin-top:9px">Файл ещё не выбран</div>
@@ -142,6 +158,11 @@ footer{font-size:12px;color:#778195;text-align:center;margin:20px 0}
 <button class="secondary" id="reset" style="width:100%;margin-top:8px">Сбросить все отметки</button>
 </div>
 </section>
+<nav class="mobile-nav" id="mobileNav" aria-label="Быстрые действия">
+ <button type="button" class="nav-search" id="navSearch"><span class="nav-icon">⌕</span><span>Поиск</span></button>
+ <button type="button" class="nav-add" id="navAdd"><span class="nav-icon">＋</span><span>Добавить</span></button>
+ <button type="button" class="nav-save" id="navSave"><span class="nav-icon">↓</span><span>Скачать Word</span></button>
+</nav>
 <footer>Обработка документа выполняется на вашем устройстве. Файл не загружается на сервер.</footer>
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script src="https://unpkg.com/docx-preview@0.3.6/dist/docx-preview.js"></script>
@@ -390,6 +411,7 @@ $("deleteDraft").addEventListener("click",async()=>{
 window.addEventListener("pagehide",saveBackupOnExit);
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden")saveBackupOnExit()});
 function parseWorkspace(xmlText,filename,restoredStatuses={}){
+ document.body.classList.remove("start-mode");document.body.classList.add("has-workspace");
  xmlDoc=new DOMParser().parseFromString(xmlText,"application/xml");
  if(xmlDoc.getElementsByTagName("parsererror").length)throw new Error("Не удалось прочитать структуру Word-документа.");
  const tables=Array.from(xmlDoc.getElementsByTagNameNS("*","tbl"));let found=null,headerIndex=-1;
@@ -498,6 +520,16 @@ function render(){
   div.append(remove);list.append(div);
  }
 }
+$("navSearch").addEventListener("click",()=>{
+ $("search").scrollIntoView({behavior:"smooth",block:"center"});
+ setTimeout(()=>$("search").focus({preventScroll:true}),350);
+});
+$("navAdd").addEventListener("click",()=>{
+ $("newType").scrollIntoView({behavior:"smooth",block:"center"});
+ setTimeout(()=>$("newType").focus({preventScroll:true}),350);
+});
+$("navSave").addEventListener("click",()=> $("save").click());
+
 $("search").addEventListener("input",render);
 document.querySelectorAll(".filters button").forEach(b=>b.addEventListener("click",()=>{
  currentFilter=b.dataset.filter;document.querySelectorAll(".filters button").forEach(x=>x.classList.toggle("active",x===b));render();
