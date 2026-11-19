@@ -84,7 +84,7 @@ async function recognizeScreenshot(file){
     const orderMatch=text.match(/(?:№\s*)?([МM]\s*\d{4,}|[A-ZА-Я]{1,3}[- ]?\d{4,})/i);
     let cleanAmount=null;
     const lines=text.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
-    const costIndex=lines.findIndex(line=>/предварительн\w*[\s\S]{0,30}стоимост/i.test(line) || (/предварительн/i.test(line)&&/стоимост/i.test(line)));
+    const costIndex=lines.findIndex(line=>/стоимост/i.test(line));
     const normalizeDigits=s=>s
       .replace(/[ОоOо]/g,'0')
       .replace(/[Зз]/g,'3')
