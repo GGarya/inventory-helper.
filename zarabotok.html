@@ -24,7 +24,7 @@ body{transition:background .2s,color .2s}
 <section class="card"><h2 id="formTitle">Добавить заявку</h2><form id="entryForm"><div class="fields">
 <div class="field"><label for="date">Дата</label><input id="date" type="date" required></div>
 <div class="field"><label for="order">Номер заявки</label><input id="order" type="text" placeholder="Например, 12548" required autocomplete="off" autocapitalize="characters" maxlength="24"></div>
-<div class="field full"><label for="amount">Сумма, ₽</label><input id="amount" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="Например, 850" required></div>
+<div class="field full"><label for="amount">Сумма, ₽</label><input id="amount" type="number" min="1000" step="0.01" inputmode="decimal" placeholder="Не менее 1 000" required></div>
 </div><div class="actions"><button class="primary" id="saveBtn" type="submit">Добавить в список</button><button class="cancel" id="cancelBtn" type="button" hidden>Отмена</button></div></form></section>
 <section class="card"><div class="toolbar"><h2>История заявок</h2><button class="secondary export-btn" id="exportBtn" type="button">⇩ Excel</button><div class="date-range" id="dateRange"><label class="range-field"><span>С даты</span><input class="filter date-filter" id="dateFrom" type="date" aria-label="Начальная дата"></label><label class="range-field"><span>По дату</span><input class="filter date-filter" id="dateTo" type="date" aria-label="Конечная дата"></label><button class="secondary clear-filter" id="clearDates" type="button">Сбросить даты</button></div></div><div class="history-total"><span class="history-total-label">Сумма за выбранный период</span><strong class="history-total-value" id="historyTotal">0 ₽</strong></div><div id="entries"><div class="empty">Пока нет записей. Добавь первую заявку выше.</div></div></section>
 <section class="card backup-card"><h2>Резервная копия</h2>
@@ -138,11 +138,13 @@ async function recognizeScreenshot(file){
     }
     let found=0;
     if(orderMatch){$('order').value=orderMatch[1].replace(/\s+/g,'').replace(/^[ММ]/,'M');found++;}
-    if(cleanAmount!==null&&Number.isFinite(Number(cleanAmount))&&Number(cleanAmount)>0){$('amount').value=Number(cleanAmount).toFixed(2).replace(/\.00$/,'');found++;}
+    if(cleanAmount!==null&&Number.isFinite(Number(cleanAmount))&&Number(cleanAmount)>=1000){$('amount').value=Number(cleanAmount).toFixed(2).replace(/\.00$/,'');found++;}else if(cleanAmount!==null&&Number(cleanAmount)<1000){$('amount').value='';}
     $('date').value=uploadDate();
-    $('ocrStatus').textContent=found===2
-      ? 'Номер и сумма распознаны. Дата установлена на день загрузки. Проверь данные и нажми «Добавить в список».'
-      : `Дата установлена на день загрузки. Распознано полей: ${found} из 2. Проверь номер и сумму, при необходимости введи их вручную.`;
+    $('ocrStatus').textContent=cleanAmount!==null&&Number(cleanAmount)<1000
+      ? 'Распознанная сумма меньше 1 000 ₽. По правилам программы сумма не может быть меньше 1 000 ₽ — проверь её вручную.'
+      : found===2
+        ? 'Номер и сумма распознаны. Дата установлена на день загрузки. Проверь данные и нажми «Добавить в список».'
+        : `Дата установлена на день загрузки. Распознано полей: ${found} из 2. Проверь номер и сумму, при необходимости введи их вручную.`;
     $('formTitle').textContent='Проверь распознанную заявку';
     $('entryForm').scrollIntoView({behavior:'smooth',block:'start'});
   }catch(err){
@@ -153,7 +155,7 @@ async function recognizeScreenshot(file){
 function resetForm(){editingId=null;$('entryForm').reset();$('date').value=today();$('formTitle').textContent='Добавить заявку';$('saveBtn').textContent='Добавить в список';$('cancelBtn').hidden=true}
 function editRecord(id){const r=records.find(x=>x.id===id);if(!r)return;editingId=id;$('date').value=r.date;$('order').value=r.order;$('amount').value=r.amount;$('formTitle').textContent='Изменить заявку';$('saveBtn').textContent='Сохранить изменения';$('cancelBtn').hidden=false;window.scrollTo({top:0,behavior:'smooth'})}
 function deleteRecord(id){if(!confirm('Удалить эту заявку?'))return;records=records.filter(r=>r.id!==id);persist();if(editingId===id)resetForm();render()}
-$('entryForm').addEventListener('submit',e=>{e.preventDefault();const amount=Number($('amount').value);if(!Number.isFinite(amount)||amount<=0){alert('Укажи сумму больше нуля.');return}const data={date:$('date').value,order:$('order').value.trim(),amount};if(!data.date||!data.order)return;if(editingId){records=records.map(r=>r.id===editingId?{...r,...data}:r)}else{records.push({id:String(Date.now())+Math.random().toString(16).slice(2),...data,created:Date.now()})}persist();resetForm();render()});
+$('entryForm').addEventListener('submit',e=>{e.preventDefault();const amount=Number($('amount').value);if(!Number.isFinite(amount)||amount<1000){alert('Сумма заявки не может быть меньше 1 000 ₽.');$('amount').focus();return}const data={date:$('date').value,order:$('order').value.trim(),amount};if(!data.date||!data.order)return;if(editingId){records=records.map(r=>r.id===editingId?{...r,...data}:r)}else{records.push({id:String(Date.now())+Math.random().toString(16).slice(2),...data,created:Date.now()})}persist();resetForm();render()});
 
 $('screenshotInput').addEventListener('change',async e=>{const file=e.target.files&&e.target.files[0];await recognizeScreenshot(file);e.target.value='';});$('cancelBtn').onclick=resetForm;$('exportBtn').onclick=exportExcel;$('dateFrom').onchange=()=>{if($('dateTo').value&&$('dateFrom').value>$('dateTo').value){alert('Начальная дата не может быть позже конечной.');$('dateFrom').value='';}render()};$('dateTo').onchange=()=>{if($('dateFrom').value&&$('dateTo').value<$('dateFrom').value){alert('Конечная дата не может быть раньше начальной.');$('dateTo').value='';}render()};$('clearDates').onclick=()=>{$('dateFrom').value='';$('dateTo').value='';render()};
 function exportBackup(){
@@ -168,7 +170,7 @@ async function importBackup(file){
   try{
     const parsed=JSON.parse(await file.text());
     const incoming=Array.isArray(parsed)?parsed:parsed.records;
-    if(!Array.isArray(incoming)||!incoming.every(r=>r&&typeof r==='object'&&r.date&&r.order!==undefined&&Number.isFinite(Number(r.amount))&&Number(r.amount)>0)){
+    if(!Array.isArray(incoming)||!incoming.every(r=>r&&typeof r==='object'&&r.date&&r.order!==undefined&&Number.isFinite(Number(r.amount))&&Number(r.amount)>=1000)){
       alert('Файл не похож на резервную копию заявок или содержит некорректные данные.');return;
     }
     if(!confirm(`В резервной копии ${incoming.length} заявок. Текущий список будет заменён. Продолжить?`))return;
