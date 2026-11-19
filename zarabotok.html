@@ -89,34 +89,50 @@ async function recognizeScreenshot(file){
     const orderMatch=text.match(/(?:№\s*)?([МM]\s*\d{4,}|[A-ZА-Я]{1,3}[- ]?\d{4,})/i);
     let cleanAmount=null;
     const lines=text.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
-    const costIndex=lines.findIndex(line=>/стоимост/i.test(line));
     const normalizeDigits=s=>s
       .replace(/[ОоOо]/g,'0').replace(/[Зз]/g,'3').replace(/[Iil|]/g,'1')
-      .replace(/[Бб]/g,'6').replace(/[РрPp]/g,'').replace(/[₽]/g,'');
+      .replace(/[Бб]/g,'6').replace(/[₽]/g,'Р')
+      .replace(/[−–—]/g,' ');
     const parseAmountCandidate=s=>{
-      const normalized=normalizeDigits(s).replace(/[−–—]/g,' ').replace(/[\t\u00a0\u202f]+/g,' ');
-      // Сначала ищем полную сумму с разрядным разделителем: 1 200 / 1.200 / 1,200.
+      const normalized=normalizeDigits(s).replace(/[\t\u00a0\u202f]+/g,' ').replace(/\s+/g,' ');
+      // В первую очередь полные суммы с разделителем тысяч: 1 200, 1.200, 1 200,00.
       const grouped=[...normalized.matchAll(/(?:^|[^\d])(\d{1,3})[ .,\u00a0]+(\d{3})(?:[.,](\d{1,2}))?(?=$|[^\d])/g)];
-      for(const m of grouped){const v=Number(m[1]+m[2]+(m[3]?'.'+m[3]:''));if(v>=100&&v<100000000)return v;}
+      for(const m of grouped){
+        const v=Number(m[1]+m[2]+(m[3]?'.'+m[3]:''));
+        if(v>=1000&&v<100000000)return v;
+      }
       const matches=[...normalized.matchAll(/(?:^|[^\d])(\d+(?:[.,]\d{1,2})?)(?=$|[^\d])/g)];
-      for(const m of matches){const v=Number(m[1].replace(',','.'));if(v>=10&&v<100000000)return v;}
+      for(const m of matches){
+        const v=Number(m[1].replace(',','.'));
+        if(v>=1000&&v<100000000)return v;
+      }
       return null;
     };
-    if(costIndex>=0){
-      const nearby=lines.slice(costIndex,costIndex+7).join(' ');
-      cleanAmount=parseAmountCandidate(nearby);
+    // Сумму ищем прежде всего рядом со знаком рубля. Это не зависит от того,
+    // распознал ли OCR подпись «Стоимость» или «Предварительная стоимость».
+    const allText=text.replace(/\r?\n/g,' ').replace(/\s+/g,' ');
+    const currencyMatch=allText.match(/((?:\d{1,3}(?:[ .,\u00a0\u202f]\d{3})+|\d+)(?:[.,]\d{1,2})?)\s*(?:₽|Р|P|руб(?:\.|лей|ля)?)/i);
+    if(currencyMatch)cleanAmount=parseAmountCandidate(currencyMatch[1]);
+    // Резервный поиск: строка с подписью стоимости и следующие строки.
+    if(cleanAmount===null){
+      const costIndex=lines.findIndex(line=>/стоимост|предварительн/i.test(line));
+      if(costIndex>=0)cleanAmount=parseAmountCandidate(lines.slice(costIndex,costIndex+7).join(' '));
     }
-    // Дополнительное распознавание именно строки под подписью «Стоимость».
-    // Увеличиваем небольшой фрагмент изображения: так OCR чаще видит начальную «1» в «1 200».
+    // Дополнительная попытка по строкам около валютного обозначения.
+    if(cleanAmount===null){
+      const currencyIndex=lines.findIndex(line=>/(?:₽|Р|P|руб)/i.test(line));
+      if(currencyIndex>=0)cleanAmount=parseAmountCandidate(lines.slice(Math.max(0,currencyIndex-1),currencyIndex+2).join(' '));
+    }
+    // Повторное распознавание области с ценой, если OCR нашёл её слова/валюту.
     try{
       const words=result.data.words||[];
-      const costWord=words.find(w=>/стоимост/i.test(w.text||''));
-      if(costWord){
+      const anchor=words.find(w=>/стоимост|руб|₽|^[РP]$/i.test(w.text||''));
+      if(anchor){
         const bitmap=await createImageBitmap(file);
-        const box=costWord.bbox, h=Math.max(24,box.y1-box.y0);
-        const x=Math.max(0,box.x0-24), y=Math.max(0,box.y0-h*.15);
-        const right=Math.min(bitmap.width,Math.max(box.x1+40,bitmap.width*.82));
-        const bottom=Math.min(bitmap.height,box.y1+h*3.2);
+        const box=anchor.bbox, h=Math.max(24,box.y1-box.y0);
+        const x=Math.max(0,box.x0-80), y=Math.max(0,box.y0-h*.25);
+        const right=Math.min(bitmap.width,Math.max(box.x1+180,bitmap.width*.82));
+        const bottom=Math.min(bitmap.height,box.y1+h*4.5);
         const crop=document.createElement('canvas');
         crop.width=Math.max(1,Math.round((right-x)*3));
         crop.height=Math.max(1,Math.round((bottom-y)*3));
@@ -126,16 +142,15 @@ async function recognizeScreenshot(file){
         bitmap.close?.();
         const focused=await Tesseract.recognize(crop,'rus+eng',{
           logger:m=>{if(m.status==='recognizing text'&&m.progress)status.textContent=`Уточняю сумму… ${Math.round(m.progress*100)}%`;},
-          config:{tessedit_pageseg_mode:'6',tessedit_char_whitelist:'0123456789., ₽Рруб'}
+          tessedit_pageseg_mode:'6',
+          tessedit_char_whitelist:'0123456789., ₽РPруб'
         });
-        const focusedAmount=parseAmountCandidate(focused.data.text||'');
+        const focusedText=focused.data.text||'';
+        const focusedCurrency=focusedText.replace(/\r?\n/g,' ').match(/((?:\d{1,3}(?:[ .,\u00a0\u202f]\d{3})+|\d+)(?:[.,]\d{1,2})?)\s*(?:₽|Р|P|руб(?:\.|лей|ля)?)/i);
+        const focusedAmount=focusedCurrency?parseAmountCandidate(focusedCurrency[1]):parseAmountCandidate(focusedText);
         if(focusedAmount!==null)cleanAmount=focusedAmount;
       }
-    }catch(e){/* Если фрагмент не удалось обработать, используем основное распознавание. */}
-    if(cleanAmount===null){
-      const currencyLine=lines.find(line=>/[₽РрPp]|руб/i.test(line)&&/\d/.test(line));
-      if(currencyLine)cleanAmount=parseAmountCandidate(currencyLine);
-    }
+    }catch(e){/* Используем результат основного распознавания. */}
     let found=0;
     if(orderMatch){$('order').value=orderMatch[1].replace(/\s+/g,'').replace(/^[ММ]/,'M');found++;}
     if(cleanAmount!==null&&Number.isFinite(Number(cleanAmount))&&Number(cleanAmount)>=1000){$('amount').value=Number(cleanAmount).toFixed(2).replace(/\.00$/,'');found++;}else if(cleanAmount!==null&&Number(cleanAmount)<1000){$('amount').value='';}
