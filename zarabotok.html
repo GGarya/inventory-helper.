@@ -18,7 +18,7 @@ body{transition:background .2s,color .2s}
 <section class="summary"><small>Всего заработано</small><div class="sumline"><div class="sum" id="total">0 ₽</div><div class="count" id="count">0 заявок</div></div></section>
 <section class="card"><h2 id="formTitle">Добавить заявку</h2><form id="entryForm"><div class="fields">
 <div class="field"><label for="date">Дата</label><input id="date" type="date" required></div>
-<div class="field"><label for="order">Номер заявки</label><input id="order" type="text" placeholder="М12548" required autocomplete="off" autocapitalize="characters" maxlength="24"></div>
+<div class="field"><label for="order">Номер заявки</label><input id="order" type="text" placeholder="Например, 12548" required autocomplete="off" autocapitalize="characters" maxlength="24"></div>
 <div class="field full"><label for="amount">Сумма, ₽</label><input id="amount" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="Например, 850" required></div>
 </div><div class="actions"><button class="primary" id="saveBtn" type="submit">Добавить в список</button><button class="cancel" id="cancelBtn" type="button" hidden>Отмена</button></div></form></section>
 <section class="card"><div class="toolbar"><h2>История заявок</h2><select class="filter" id="period" aria-label="Период"><option value="all">За всё время</option><option value="month">Этот месяц</option><option value="year">Этот год</option></select></div><div id="entries"><div class="empty">Пока нет записей. Добавь первую заявку выше.</div></div></section>
@@ -27,8 +27,8 @@ body{transition:background .2s,color .2s}
 <script>
 const KEY='piecework_earnings_v1',THEME_KEY='piecework_theme_v1';let records=[];let editingId=null;
 const $=id=>document.getElementById(id);const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`};
-function load(){try{records=JSON.parse(localStorage.getItem(KEY)||'[]');if(!Array.isArray(records))records=[];records=records.map(r=>({...r,order:withPrefix(r.order)}))}catch{records=[]}}
-function withPrefix(value){const cleaned=String(value||'').trim().toUpperCase().replace(/^M*/,'').replace(/[^A-Z0-9\-_/]/g,'');return 'M'+cleaned}
+function load(){try{records=JSON.parse(localStorage.getItem(KEY)||'[]');if(!Array.isArray(records))records=[];records=records.map(r=>({...r,order:String(r.order||'').trim()}))}catch{records=[]}}
+function withPrefix(value){return String(value||'').trim()}
 function applyTheme(theme){document.documentElement.dataset.theme=theme;$('themeToggle').textContent=theme==='dark'?'☀️ Дневной режим':'🌙 Ночной режим';$('themeToggle').setAttribute('aria-label',theme==='dark'?'Включить дневную тему':'Включить ночную тему');document.querySelector('meta[name="theme-color"]').content=theme==='dark'?'#10141d':'#f5f6fa';localStorage.setItem(THEME_KEY,theme)}
 function persist(){localStorage.setItem(KEY,JSON.stringify(records))}
 function money(n){return new Intl.NumberFormat('ru-RU',{maximumFractionDigits:2}).format(n)+' ₽'}
@@ -38,7 +38,7 @@ function render(){const list=filtered();const sum=list.reduce((s,r)=>s+Number(r.
 function resetForm(){editingId=null;$('entryForm').reset();$('date').value=today();$('formTitle').textContent='Добавить заявку';$('saveBtn').textContent='Добавить в список';$('cancelBtn').hidden=true}
 function editRecord(id){const r=records.find(x=>x.id===id);if(!r)return;editingId=id;$('date').value=r.date;$('order').value=r.order;$('amount').value=r.amount;$('formTitle').textContent='Изменить заявку';$('saveBtn').textContent='Сохранить изменения';$('cancelBtn').hidden=false;window.scrollTo({top:0,behavior:'smooth'})}
 function deleteRecord(id){if(!confirm('Удалить эту заявку?'))return;records=records.filter(r=>r.id!==id);persist();if(editingId===id)resetForm();render()}
-$('entryForm').addEventListener('submit',e=>{e.preventDefault();const amount=Number($('amount').value);if(!Number.isFinite(amount)||amount<=0){alert('Укажи сумму больше нуля.');return}const data={date:$('date').value,order:withPrefix($('order').value),amount};if(!data.date||!data.order)return;if(editingId){records=records.map(r=>r.id===editingId?{...r,...data}:r)}else{records.push({id:String(Date.now())+Math.random().toString(16).slice(2),...data,created:Date.now()})}persist();resetForm();render()});
-$('order').addEventListener('input',()=>{const el=$('order');const pos=el.selectionStart;const normalized=withPrefix(el.value);if(el.value!==normalized){el.value=normalized;try{el.setSelectionRange(Math.max(1,pos),Math.max(1,pos))}catch{}}});
+$('entryForm').addEventListener('submit',e=>{e.preventDefault();const amount=Number($('amount').value);if(!Number.isFinite(amount)||amount<=0){alert('Укажи сумму больше нуля.');return}const data={date:$('date').value,order:$('order').value.trim(),amount};if(!data.date||!data.order)return;if(editingId){records=records.map(r=>r.id===editingId?{...r,...data}:r)}else{records.push({id:String(Date.now())+Math.random().toString(16).slice(2),...data,created:Date.now()})}persist();resetForm();render()});
+
 $('cancelBtn').onclick=resetForm;$('period').onchange=render;$('themeToggle').onclick=()=>applyTheme(document.documentElement.dataset.theme==='dark'?'light':'dark');load();$('date').value=today();applyTheme(localStorage.getItem(THEME_KEY)||'light');render();
 </script></body></html>
