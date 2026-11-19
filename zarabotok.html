@@ -82,22 +82,38 @@ async function recognizeScreenshot(file){
     });
     const text=result.data.text||'';
     const orderMatch=text.match(/(?:№\s*)?([МM]\s*\d{4,}|[A-ZА-Я]{1,3}[- ]?\d{4,})/i);
-    let amountMatch=null;
-    const lines=text.split(/\r?\n/);
-    const costIndex=lines.findIndex(line=>/предварительн\w*\s+стоимост/i.test(line));
+    let cleanAmount=null;
+    const lines=text.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+    const costIndex=lines.findIndex(line=>/предварительн\w*[\s\S]{0,30}стоимост/i.test(line) || (/предварительн/i.test(line)&&/стоимост/i.test(line)));
+    const normalizeDigits=s=>s
+      .replace(/[ОоOо]/g,'0')
+      .replace(/[Зз]/g,'3')
+      .replace(/[Iil|]/g,'1')
+      .replace(/[Бб]/g,'6')
+      .replace(/[РрPp]/g,'')
+      .replace(/[₽]/g,'');
+    const parseAmountCandidate=s=>{
+      const normalized=normalizeDigits(s).replace(/[−–—]/g,' ');
+      const matches=[...normalized.matchAll(/(?:^|[^\d])(\d{1,3}(?:[ \u00a0]\d{3})+(?:[.,]\d{1,2})?|\d+(?:[.,]\d{1,2})?)(?=$|[^\d])/g)];
+      for(const match of matches){
+        const value=Number(match[1].replace(/[ \u00a0]/g,'').replace(',','.'));
+        if(Number.isFinite(value)&&value>0&&value<100000000)return value;
+      }
+      return null;
+    };
     if(costIndex>=0){
-      const nearby=lines.slice(costIndex,costIndex+4).join(' ');
-      amountMatch=nearby.match(/(\d[\d\s\u00a0]*(?:[.,]\d{1,2})?)\s*(?:₽|руб\.?)/i)
-        ||nearby.match(/(\d[\d\s\u00a0]*(?:[.,]\d{1,2})?)/);
+      // Usually the amount is on the same line or immediately below the label.
+      const nearby=lines.slice(costIndex,costIndex+5).join(' ');
+      cleanAmount=parseAmountCandidate(nearby);
     }
-    if(!amountMatch){
-      const allAmounts=[...text.matchAll(/(\d[\d\s\u00a0]*(?:[.,]\d{1,2})?)\s*(?:₽|руб\.?)/gi)];
-      if(allAmounts.length)amountMatch=allAmounts[0];
+    if(cleanAmount===null){
+      // Fallback: look for a number next to a ruble marker, including OCR variants Р/P.
+      const currencyLine=lines.find(line=>/[₽РрPp]|руб/i.test(line)&&/\d/.test(line));
+      if(currencyLine)cleanAmount=parseAmountCandidate(currencyLine);
     }
-    const cleanAmount=amountMatch?amountMatch[1].replace(/[\s\u00a0]/g,'').replace(',','.'):null;
     let found=0;
     if(orderMatch){$('order').value=orderMatch[1].replace(/\s+/g,'').replace(/^[ММ]/,'M');found++;}
-    if(cleanAmount&&Number.isFinite(Number(cleanAmount))&&Number(cleanAmount)>0){$('amount').value=Number(cleanAmount).toFixed(2).replace(/\.00$/,'');found++;}
+    if(cleanAmount!==null&&Number.isFinite(Number(cleanAmount))&&Number(cleanAmount)>0){$('amount').value=Number(cleanAmount).toFixed(2).replace(/\.00$/,'');found++;}
     $('date').value=uploadDate();
     $('ocrStatus').textContent=found===2
       ? 'Номер и сумма распознаны. Дата установлена на день загрузки. Проверь данные и нажми «Добавить в список».'
