@@ -630,29 +630,23 @@ $("addEquipment").addEventListener("click",()=>{
  }catch(err){showMessage("Не удалось добавить оборудование: "+err.message)}
 });
 function escapeHtml(value){return String(value??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;", "'":"&#39;"}[ch]));}
-// Удаляет полностью пустые строки только из таблицы оборудования в экспортируемой копии.
-function cleanEmptyEquipmentRowsForExport(xmlText){
-  const doc=new DOMParser().parseFromString(xmlText,"application/xml");
-  if(doc.getElementsByTagName("parsererror").length)return xmlText;
+function removeEmptyEquipmentRows(doc){
   const tables=Array.from(doc.getElementsByTagNameNS("*","tbl"));
   for(const table of tables){
     const rows=Array.from(table.children).filter(x=>x.localName==="tr");
-    let headerIndex=-1;
-    for(let i=0;i<rows.length;i++){
-      const values=cellsOf(rows[i]).map(textOf);
-      if(values.some(v=>norm(v).includes("фактическое присутствие")||norm(v).includes("фактическое наличие"))){
-        headerIndex=i;break;
-      }
-    }
-    if(headerIndex<0)continue;
-    for(let i=rows.length-1;i>headerIndex;i--){
-      const row=rows[i],cells=cellsOf(row);
-      if(cells.length>0&&cells.every(cell=>!textOf(cell)))row.remove();
-    }
+    const isEquipmentTable=rows.some(row=>{
+      const values=cellsOf(row).map(textOf);
+      return values.some(value=>norm(value).includes("фактическое присутствие")||norm(value).includes("фактическое наличие"));
+    });
+    if(!isEquipmentTable)continue;
+    rows.forEach(row=>{
+      const cells=cellsOf(row);
+      if(cells.length && cells.every(cell=>!textOf(cell)))row.remove();
+    });
     break;
   }
-  return new XMLSerializer().serializeToString(doc);
 }
+
 function fillInspectionSummary(){
   const yes=records.filter(r=>statuses[r.rowIndex]==="Да").length;
   const no=records.filter(r=>statuses[r.rowIndex]==="Нет").length;
@@ -701,9 +695,11 @@ $("save").addEventListener("click",async()=>{
  try{
   for(const r of records){setCellText(r.statusCell,statuses[r.rowIndex]||"");if(r.macCell)setCellText(r.macCell,r.mac||"");}
   fillInspectionSummary();
-  const serializer=new XMLSerializer();
-  const documentXml=cleanEmptyEquipmentRowsForExport(serializer.serializeToString(xmlDoc));
-  zipOriginal.file("word/document.xml",documentXml);
+  // Удаляем полностью пустые строки только в копии для скачивания.
+  // Открытая инвентаризация и автосохранение остаются без изменений.
+  const exportDoc=xmlDoc.cloneNode(true);
+  removeEmptyEquipmentRows(exportDoc);
+  const serializer=new XMLSerializer();zipOriginal.file("word/document.xml",serializer.serializeToString(exportDoc));
   const zipBlob=await zipOriginal.generateAsync({type:"blob",compression:"DEFLATE"});
   const mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document";
   const filename=sourceName+"_инвентаризация.docx";
