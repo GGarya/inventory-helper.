@@ -15,6 +15,11 @@ body{transition:background .2s,color .2s}
 <body><main class="wrap">
 
 <section class="summary"><small id="summaryLabel">Заработано за текущий период</small><div class="sumline"><div class="sum" id="total">0 ₽</div><div class="count" id="count">0 заявок</div></div></section>
+<section class="card backup-card"><h2>Резервная копия</h2>
+  <p class="ocr-hint">Автокопия заявок сохраняется на этом устройстве. JSON-файл можно сохранить отдельно для переноса или восстановления на другом устройстве.</p>
+  <div class="actions"><button class="secondary" id="backupExport" type="button">Сохранить копию</button><button class="secondary" id="backupImportBtn" type="button">Восстановить</button></div>
+  <input id="backupImport" class="file-input" type="file" accept=".json,application/json">
+</section>
 <section class="card"><h2>Добавить по скриншоту</h2>
   <p class="ocr-hint">Загрузи скриншот заказа. Программа распознает номер и предварительную стоимость, а датой поставит день загрузки.</p>
   <label class="upload-label" for="screenshotInput">Выбрать скриншот</label>
@@ -26,23 +31,33 @@ body{transition:background .2s,color .2s}
 <div class="field"><label for="order">Номер заявки</label><input id="order" type="text" placeholder="Например, 12548" required autocomplete="off" autocapitalize="characters" maxlength="24"></div>
 <div class="field full"><label for="amount">Сумма, ₽</label><input id="amount" type="number" min="1000" step="0.01" inputmode="decimal" placeholder="Не менее 1 000" required></div>
 </div><div class="actions"><button class="primary" id="saveBtn" type="submit">Добавить в список</button><button class="cancel" id="cancelBtn" type="button" hidden>Отмена</button></div></form></section>
-<section class="card"><div class="toolbar"><h2>История заявок</h2><button class="secondary export-btn" id="exportBtn" type="button">⇩ Excel</button><div class="date-range" id="dateRange"><label class="range-field"><span>С даты</span><input class="filter date-filter" id="dateFrom" type="date" aria-label="Начальная дата"></label><label class="range-field"><span>По дату</span><input class="filter date-filter" id="dateTo" type="date" aria-label="Конечная дата"></label><button class="secondary clear-filter" id="clearDates" type="button">Сбросить даты</button></div></div><div class="history-total"><span class="history-total-label">Сумма за выбранный период</span><strong class="history-total-value" id="historyTotal">0 ₽</strong></div><div id="entries"><div class="empty">Пока нет записей. Добавь первую заявку выше.</div></div></section>
-<section class="card backup-card"><h2>Резервная копия</h2>
-  <p class="ocr-hint">Сохрани все заявки в файл, чтобы перенести их на другое устройство или восстановить после очистки браузера.</p>
-  <div class="actions"><button class="secondary" id="backupExport" type="button">Сохранить копию</button><button class="secondary" id="backupImportBtn" type="button">Восстановить</button></div>
-  <input id="backupImport" class="file-input" type="file" accept=".json,application/json">
-</section>
+<section class="card"><div class="toolbar"><h2>История заявок</h2><div class="actions" style="flex:0 0 auto"><button class="secondary export-btn" id="todayFilter" type="button">Сегодня</button><button class="secondary export-btn" id="exportBtn" type="button">⇩ Excel</button></div><div class="date-range" id="dateRange"><label class="range-field"><span>С даты</span><input class="filter date-filter" id="dateFrom" type="date" aria-label="Начальная дата"></label><label class="range-field"><span>По дату</span><input class="filter date-filter" id="dateTo" type="date" aria-label="Конечная дата"></label><button class="secondary clear-filter" id="clearDates" type="button">Сбросить даты</button></div></div><div class="history-total"><span class="history-total-label">Сумма за выбранный период</span><strong class="history-total-value" id="historyTotal">0 ₽</strong></div><div id="entries"><div class="empty">Пока нет записей. Добавь первую заявку выше.</div></div></section>
+
 <div class="foot">Данные сохраняются автоматически на этом устройстве</div>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script>
-const KEY='piecework_earnings_v1';let records=[];let editingId=null;
+const KEY='piecework_earnings_v1',BACKUP_KEY='piecework_earnings_autobackup_v1';let records=[];let editingId=null;
 const $=id=>document.getElementById(id);const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`};
-function load(){try{records=JSON.parse(localStorage.getItem(KEY)||'[]');if(!Array.isArray(records))records=[];records=records.map(r=>({...r,order:String(r.order||'').trim()}))}catch{records=[]}}
+function load(){
+  const valid=value=>Array.isArray(value);
+  try{
+    const primary=JSON.parse(localStorage.getItem(KEY)||'null');
+    if(valid(primary))records=primary;else throw new Error('Основные данные недоступны');
+  }catch{
+    try{const backup=JSON.parse(localStorage.getItem(BACKUP_KEY)||'[]');records=valid(backup)?backup:[];}
+    catch{records=[];}
+  }
+  records=records.map(r=>({...r,order:String(r.order||'').trim()}));
+}
 function withPrefix(value){return String(value||'').trim()}
 function applyTheme(){document.documentElement.dataset.theme='dark';document.querySelector('meta[name="theme-color"]').content='#10141d';}
-function persist(){localStorage.setItem(KEY,JSON.stringify(records))}
+function persist(){
+  const data=JSON.stringify(records);
+  localStorage.setItem(KEY,data);
+  try{localStorage.setItem(BACKUP_KEY,data)}catch(e){console.warn('Не удалось обновить автокопию',e)}
+}
 function currentPayPeriod(){
   const now=new Date(),year=now.getFullYear(),month=now.getMonth(),day=now.getDate();
   const startDay=day<=15?1:16;
@@ -172,7 +187,8 @@ function editRecord(id){const r=records.find(x=>x.id===id);if(!r)return;editingI
 function deleteRecord(id){if(!confirm('Удалить эту заявку?'))return;records=records.filter(r=>r.id!==id);persist();if(editingId===id)resetForm();render()}
 $('entryForm').addEventListener('submit',e=>{e.preventDefault();const amount=Number($('amount').value);if(!Number.isFinite(amount)||amount<1000){alert('Сумма заявки не может быть меньше 1 000 ₽.');$('amount').focus();return}const data={date:$('date').value,order:$('order').value.trim(),amount};if(!data.date||!data.order)return;if(editingId){records=records.map(r=>r.id===editingId?{...r,...data}:r)}else{records.push({id:String(Date.now())+Math.random().toString(16).slice(2),...data,created:Date.now()})}persist();resetForm();render()});
 
-$('screenshotInput').addEventListener('change',async e=>{const file=e.target.files&&e.target.files[0];await recognizeScreenshot(file);e.target.value='';});$('cancelBtn').onclick=resetForm;$('exportBtn').onclick=exportExcel;$('dateFrom').onchange=()=>{if($('dateTo').value&&$('dateFrom').value>$('dateTo').value){alert('Начальная дата не может быть позже конечной.');$('dateFrom').value='';}render()};$('dateTo').onchange=()=>{if($('dateFrom').value&&$('dateTo').value<$('dateFrom').value){alert('Конечная дата не может быть раньше начальной.');$('dateTo').value='';}render()};$('clearDates').onclick=()=>{$('dateFrom').value='';$('dateTo').value='';render()};
+$('screenshotInput').addEventListener('change',async e=>{const file=e.target.files&&e.target.files[0];await recognizeScreenshot(file);e.target.value='';});$('cancelBtn').onclick=resetForm;$('exportBtn').onclick=exportExcel;
+$('todayFilter').onclick=()=>{const t=today();$('dateFrom').value=t;$('dateTo').value=t;render();};$('dateFrom').onchange=()=>{if($('dateTo').value&&$('dateFrom').value>$('dateTo').value){alert('Начальная дата не может быть позже конечной.');$('dateFrom').value='';}render()};$('dateTo').onchange=()=>{if($('dateFrom').value&&$('dateTo').value<$('dateFrom').value){alert('Конечная дата не может быть раньше начальной.');$('dateTo').value='';}render()};$('clearDates').onclick=()=>{$('dateFrom').value='';$('dateTo').value='';render()};
 function exportBackup(){
   const payload={format:'piecework-earnings-backup',version:1,exportedAt:new Date().toISOString(),records};
   const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
@@ -196,5 +212,5 @@ async function importBackup(file){
 $('backupExport').onclick=exportBackup;
 $('backupImportBtn').onclick=()=>$('backupImport').click();
 $('backupImport').addEventListener('change',async e=>{await importBackup(e.target.files&&e.target.files[0]);e.target.value='';});
-load();$('date').value=today();applyTheme();render();
+load();$('date').value=today();applyTheme();render();if(navigator.storage&&navigator.storage.persist){navigator.storage.persist().catch(()=>{});}
 </script></body></html>
