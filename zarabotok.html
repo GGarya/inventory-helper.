@@ -15,14 +15,9 @@ body{transition:background .2s,color .2s}
 <body><main class="wrap">
 
 <section class="summary"><small id="summaryLabel">Заработано за текущий период</small><div class="sumline"><div class="sum" id="total">0 ₽</div><div class="count" id="count">0 заявок</div></div></section>
-<section class="card backup-card"><h2>Резервная копия</h2>
-  <p class="ocr-hint">Автокопия заявок сохраняется на этом устройстве. JSON-файл можно сохранить отдельно для переноса или восстановления на другом устройстве.</p>
-  <div class="actions"><button class="secondary" id="backupExport" type="button">Сохранить копию</button><button class="secondary" id="backupImportBtn" type="button">Восстановить</button></div>
-  <input id="backupImport" class="file-input" type="file" accept=".json,application/json">
-</section>
+
 <section class="card"><h2>Добавить по скриншоту</h2>
-  <p class="ocr-hint">Загрузи скриншот заказа. Программа распознает номер и предварительную стоимость, а датой поставит день загрузки.</p>
-  <label class="upload-label" for="screenshotInput">Выбрать скриншот</label>
+    <label class="upload-label" for="screenshotInput">Выбрать скриншот</label>
   <input id="screenshotInput" class="file-input" type="file" accept="image/*">
   <div id="ocrStatus" class="ocr-status" aria-live="polite"></div>
 </section>
@@ -33,12 +28,17 @@ body{transition:background .2s,color .2s}
 </div><div class="actions"><button class="primary" id="saveBtn" type="submit">Добавить в список</button><button class="cancel" id="cancelBtn" type="button" hidden>Отмена</button></div></form></section>
 <section class="card"><div class="toolbar"><h2>История заявок</h2><div class="actions" style="flex:0 0 auto"><button class="secondary export-btn" id="todayFilter" type="button">Сегодня</button><button class="secondary export-btn" id="exportBtn" type="button">⇩ Excel</button></div><div class="date-range" id="dateRange"><label class="range-field"><span>С даты</span><input class="filter date-filter" id="dateFrom" type="date" aria-label="Начальная дата"></label><label class="range-field"><span>По дату</span><input class="filter date-filter" id="dateTo" type="date" aria-label="Конечная дата"></label><button class="secondary clear-filter" id="clearDates" type="button">Сбросить даты</button></div></div><div class="history-total"><span class="history-total-label">Сумма за выбранный период</span><strong class="history-total-value" id="historyTotal">0 ₽</strong></div><div id="entries"><div class="empty">Пока нет записей. Добавь первую заявку выше.</div></div><div class="pagination" id="pagination" hidden><button class="secondary" id="prevPage" type="button">← Назад</button><span class="page-info" id="pageInfo">1 / 1</span><button class="secondary" id="nextPage" type="button">Вперёд →</button></div></section>
 
+<section class="card backup-card"><h2>Резервная копия</h2>
+  <p class="ocr-hint">Автокопия заявок сохраняется на этом устройстве. JSON-файл можно сохранить отдельно для переноса или восстановления на другом устройстве.</p>
+  <div class="actions"><button class="secondary" id="backupExport" type="button">Сохранить копию</button><button class="secondary" id="backupImportBtn" type="button">Восстановить</button></div>
+  <input id="backupImport" class="file-input" type="file" accept=".json,application/json">
+</section>
 <div class="foot">Данные сохраняются автоматически на этом устройстве</div>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script>
-const KEY='piecework_earnings_v1',BACKUP_KEY='piecework_earnings_autobackup_v1';const PAGE_SIZE=10;let currentPage=1;let records=[];let editingId=null;
+const KEY='piecework_earnings_v1',BACKUP_KEY='piecework_earnings_autobackup_v1';const PAGE_SIZE=6;let currentPage=1;let records=[];let editingId=null;
 const $=id=>document.getElementById(id);const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`};
 function load(){
   const valid=value=>Array.isArray(value);
