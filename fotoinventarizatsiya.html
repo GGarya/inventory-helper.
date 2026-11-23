@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#172033">
+<meta name="theme-color" content="#111827">
 <title>Инвентаризация — фото оборудования</title>
 <style>
 :root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#172033;background:#f3f5f8}
@@ -38,9 +38,21 @@ input[type=file]{display:none}
 .empty{padding:18px;text-align:center;color:#7b8797;font-size:14px;background:#f7f9fb;border-radius:12px}
 .status{font-size:13px;color:#167447;margin-top:8px;min-height:18px}
 @media(min-width:560px){.photos{grid-template-columns:repeat(4,1fr)}}
+body.dark{color:#edf2f8;background:#111827}
+body.dark .sub,body.dark .count,body.dark .note{color:#aab6c7}
+body.dark .panel,body.dark .work{background:#1f2937;border-color:#374151;box-shadow:0 2px 8px #0003}
+body.dark label{color:#cbd5e1}
+body.dark input[type=text],body.dark input[type=number]{background:#111827;color:#f3f4f6;border-color:#4b5563}
+body.dark .secondary,body.dark .filebtn{background:#374151;color:#f3f4f6}
+body.dark .pill{background:#263d59;color:#93c5fd}
+body.dark .empty{background:#273244;color:#aab6c7}
+body.dark .photo{background:#374151}
+body.dark .photo button{background:#111827e8;color:#fff}
+body.dark .status{color:#6ee7b7}
+
 </style>
 </head>
-<body>
+<body class="dark">
 <header>
   <h1>Фотоинвентаризация</h1>
   <div class="sub">Собирай 3–4 фото для каждого рабочего места и отправляй их в Telegram одним альбомом.</div>
