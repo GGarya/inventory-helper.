@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#172033">
+<title>Инвентаризация — фото оборудования</title>
+<style>
+:root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#172033;background:#f3f5f8}
+*{box-sizing:border-box}
+body{margin:0;padding:env(safe-area-inset-top) 14px env(safe-area-inset-bottom);max-width:720px;margin-inline:auto}
+header{padding:22px 4px 14px}
+h1{font-size:24px;margin:0 0 6px}
+.sub{color:#687386;font-size:14px}
+.panel,.work{background:#fff;border:1px solid #e1e6ed;border-radius:16px;padding:16px;margin:12px 0;box-shadow:0 2px 8px #15223808}
+label{display:block;font-size:13px;color:#596579;margin-bottom:7px;font-weight:600}
+input[type=text],input[type=number]{width:100%;font:inherit;font-size:17px;padding:13px;border:1px solid #ccd4df;border-radius:11px;background:#fff;color:#172033}
+.actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:13px}
+button,.filebtn{border:0;border-radius:11px;padding:13px 15px;font:600 15px inherit;cursor:pointer}
+.primary{background:#1769e0;color:white;flex:1}
+.secondary,.filebtn{background:#edf2f8;color:#172033}
+button:disabled{opacity:.45;cursor:not-allowed}
+.filebtn{display:inline-flex;align-items:center;justify-content:center;flex:1;min-height:48px}
+input[type=file]{display:none}
+.count{font-size:13px;color:#687386;margin-top:10px}
+.photos{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:13px}
+.photo{position:relative;aspect-ratio:1;background:#eef1f5;border-radius:10px;overflow:hidden}
+.photo img{width:100%;height:100%;object-fit:cover}
+.photo button{position:absolute;right:5px;top:5px;padding:4px 8px;border-radius:20px;background:#172033d9;color:white}
+.workhead{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.workhead strong{font-size:16px}
+.pill{font-size:12px;color:#1769a8;background:#e8f2ff;padding:5px 9px;border-radius:30px;white-space:nowrap}
+.work .photos{grid-template-columns:repeat(4,1fr)}
+.work .photo{aspect-ratio:1}
+.work-actions{display:flex;gap:8px;margin-top:12px}
+.work-actions button{flex:1}
+.note{font-size:13px;line-height:1.45;color:#687386}
+.empty{padding:18px;text-align:center;color:#7b8797;font-size:14px;background:#f7f9fb;border-radius:12px}
+.status{font-size:13px;color:#167447;margin-top:8px;min-height:18px}
+@media(min-width:560px){.photos{grid-template-columns:repeat(4,1fr)}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Фотоинвентаризация</h1>
+  <div class="sub">Собирай 3–4 фото для каждого рабочего места и отправляй их в Telegram одним альбомом.</div>
+</header>
+
+<section class="panel">
+  <label for="place">Рабочее место</label>
+  <input id="place" type="text" value="РМ-01" autocomplete="off" placeholder="Например, РМ-01">
+  <div class="actions">
+    <label class="filebtn" for="camera">📷 Сфотографировать</label>
+    <input id="camera" type="file" accept="image/*" capture="environment">
+    <label class="filebtn" for="gallery">🖼 Добавить из галереи</label>
+    <input id="gallery" type="file" accept="image/*" multiple>
+  </div>
+  <div class="count" id="currentCount">Пока нет фотографий</div>
+  <div class="photos" id="currentPhotos"></div>
+  <div class="actions">
+    <button class="primary" id="savePlace" disabled>Сохранить рабочее место</button>
+    <button class="secondary" id="clearCurrent" disabled>Очистить</button>
+  </div>
+  <div class="status" id="status" role="status"></div>
+</section>
+
+<section class="panel">
+  <div class="workhead">
+    <strong>Готовые рабочие места</strong>
+    <span class="pill" id="placesCount">0 мест</span>
+  </div>
+  <p class="note">Нажми «Отправить в Telegram» у нужного места. В открывшемся меню iPhone выбери Telegram и нужный чат. Подпись с номером рабочего места будет добавлена автоматически.</p>
+  <div id="savedPlaces"><div class="empty">Здесь появятся сохранённые рабочие места.</div></div>
+</section>
+
+<script>
+const DB_NAME='photo-inventory-db', STORE='places';
+let db, current=[];
+const $=id=>document.getElementById(id);
+function openDB(){
+ return new Promise((resolve,reject)=>{
+  const req=indexedDB.open(DB_NAME,1);
+  req.onupgradeneeded=()=>req.result.createObjectStore(STORE,{keyPath:'id',autoIncrement:true});
+  req.onsuccess=()=>{db=req.result;resolve(db)};
+  req.onerror=()=>reject(req.error);
+ });
+}
+function tx(mode='readonly'){return db.transaction(STORE,mode).objectStore(STORE)}
+function allPlaces(){return new Promise((res,rej)=>{const r=tx().getAll();r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
+function addPlace(place){return new Promise((res,rej)=>{const r=tx('readwrite').add(place);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
+function deletePlace(id){return new Promise((res,rej)=>{const r=tx('readwrite').delete(id);r.onsuccess=()=>res();r.onerror=()=>rej(r.error)})}
+function fileFromBlob(blob,name){return new File([blob],name,{type:blob.type||'image/jpeg',lastModified:Date.now()})}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function renderCurrent(){
+ $('currentCount').textContent=current.length?`Добавлено фотографий: ${current.length}`:'Пока нет фотографий';
+ $('savePlace').disabled=!current.length;
+ $('clearCurrent').disabled=!current.length;
+ $('currentPhotos').innerHTML='';
+ current.forEach((f,i)=>{
+  const url=URL.createObjectURL(f), d=document.createElement('div');
+  d.className='photo';d.innerHTML=`<img src="${url}" alt="Фото ${i+1}"><button type="button" aria-label="Удалить">×</button>`;
+  d.querySelector('button').onclick=()=>{current.splice(i,1);renderCurrent()};
+  $('currentPhotos').append(d);
+ });
+}
+async function addFiles(files){
+ for(const f of [...files]) if(f.type.startsWith('image/')) current.push(f);
+ renderCurrent();
+}
+$('camera').addEventListener('change',e=>{addFiles(e.target.files);e.target.value=''});
+$('gallery').addEventListener('change',e=>{addFiles(e.target.files);e.target.value=''});
+$('clearCurrent').onclick=()=>{current=[];renderCurrent();$('status').textContent='Текущие фотографии очищены.'};
+$('savePlace').onclick=async()=>{
+ const name=$('place').value.trim();
+ if(!name){$('status').textContent='Укажи номер рабочего места.';return}
+ if(!current.length)return;
+ await addPlace({name,photos:current.map((f,i)=>({blob:f,name:`${name.replace(/[^a-zа-яё0-9_-]/gi,'_')}_${i+1}.${(f.type.split('/')[1]||'jpg').replace('jpeg','jpg')}`,type:f.type}))});
+ current=[];renderCurrent();$('status').textContent=`${name}: рабочее место сохранено.`;
+ const m=name.match(/(\d+)(?!.*\d)/);
+ if(m){const next=String(Number(m[1])+1).padStart(m[1].length,'0');$('place').value=name.slice(0,m.index)+next+name.slice(m.index+m[1].length)}
+ await renderPlaces();
+};
+async function sharePlace(p){
+ const files=p.photos.map(x=>fileFromBlob(x.blob,x.name));
+ const text=`${p.name} — ${files.length} единиц оборудования`;
+ if(!navigator.share || !navigator.canShare || !navigator.canShare({files})){
+  alert('Этот браузер не поддерживает отправку нескольких фото через меню «Поделиться». Попробуй открыть файл в Safari на iPhone.');
+  return;
+ }
+ try{await navigator.share({files,title:p.name,text})}
+ catch(e){if(e.name!=='AbortError')alert('Не удалось открыть меню отправки: '+e.message)}
+}
+async function renderPlaces(){
+ const places=await allPlaces();
+ $('placesCount').textContent=`${places.length} мест`;
+ const root=$('savedPlaces');root.innerHTML='';
+ if(!places.length){root.innerHTML='<div class="empty">Здесь появятся сохранённые рабочие места.</div>';return}
+ places.slice().reverse().forEach(p=>{
+  const el=document.createElement('div');el.className='work';
+  el.innerHTML=`<div class="workhead"><strong>${esc(p.name)}</strong><span class="pill">${p.photos.length} фото</span></div><div class="photos">${p.photos.map((x,i)=>`<div class="photo"><img src="${URL.createObjectURL(x.blob)}" alt="Фото ${i+1}"></div>`).join('')}</div><div class="work-actions"><button class="primary">Отправить в Telegram</button><button class="secondary">Удалить</button></div>`;
+  const buttons=el.querySelectorAll('button');
+  buttons[0].onclick=()=>sharePlace(p);
+  buttons[1].onclick=async()=>{if(confirm(`Удалить ${p.name} и все его фотографии?`)){await deletePlace(p.id);await renderPlaces()}};
+  root.append(el);
+ });
+}
+(async()=>{try{await openDB();await renderPlaces();renderCurrent()}catch(e){$('status').textContent='Не удалось включить локальное сохранение. Открой страницу в Safari.'}})();
+</script>
+</body>
+</html>
