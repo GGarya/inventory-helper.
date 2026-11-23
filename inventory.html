@@ -63,6 +63,7 @@ footer{text-align:center;color:#71717a;font-size:11px;margin:18px 0}
   <input id="templateFile" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
   <div id="templateState" class="note" style="margin-top:8px">Шаблон не загружен</div>
   <button class="primary" id="downloadDocx" style="margin-top:10px" disabled>Скачать заполненный Word-файл</button>
+  <div id="downloadResult" class="note" style="margin-top:10px"></div>
 </section>
 
 <section class="panel">
@@ -109,12 +110,13 @@ footer{text-align:center;color:#71717a;font-size:11px;margin:18px 0}
 </section>
 <footer>Данные хранятся локально в вашем браузере и не отправляются на сервер.</footer>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script>
 (()=>{
 'use strict';
 const $=id=>document.getElementById(id);
 const KEY='inventory-helper-standalone-v1';
-let records=[],filter='all',templateZip=null,templateName='';
+let records=[],filter='all',templateZip=null,templateName='',lastDownloadUrl=null;
 function message(text){$('message').textContent=text}
 function save(){
   try{
@@ -212,10 +214,12 @@ $('templateFile').addEventListener('change',async e=>{
     templateName=file.name;
     $('templateState').textContent='Загружен шаблон: '+file.name;
     $('downloadDocx').disabled=false;
+    $('downloadResult').textContent='';
     message('Шаблон загружен. Добавьте оборудование и скачайте заполненный документ.');
   }catch(err){
     templateZip=null;$('downloadDocx').disabled=true;
     $('templateState').textContent='Ошибка загрузки: '+err.message;
+    message('Не удалось загрузить шаблон: '+err.message);
   }
 });
 $('downloadDocx').addEventListener('click',async()=>{
@@ -253,11 +257,23 @@ $('downloadDocx').addEventListener('click',async()=>{
     });
     zip.file('word/document.xml',new XMLSerializer().serializeToString(doc));
     const blob=await zip.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
-    const url=URL.createObjectURL(blob),a=document.createElement('a');
-    a.href=url;a.download=(templateName.replace(/\.docx$/i,'')||'Инвентаризация')+'_заполненный.docx';
-    document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);
-    message('Готово. Заполненный Word-файл сформирован.');
-  }catch(err){message('Не удалось сформировать документ: '+err.message)}
+    if(lastDownloadUrl)URL.revokeObjectURL(lastDownloadUrl);
+    lastDownloadUrl=URL.createObjectURL(blob);
+    const filename=(templateName.replace(/\.docx$/i,'')||'Инвентаризация')+'_заполненный.docx';
+    const link=document.createElement('a');
+    link.href=lastDownloadUrl;link.download=filename;
+    link.textContent='Если файл не скачался автоматически — нажмите здесь';
+    link.style.cssText='display:inline-block;color:#64b5ff;text-decoration:underline;font-size:14px;padding:8px 0';
+    $('downloadResult').replaceChildren(link);
+    // Attempt the automatic download; the visible link remains available on iPhone/iPad.
+    const autoLink=document.createElement('a');
+    autoLink.href=lastDownloadUrl;autoLink.download=filename;
+    document.body.appendChild(autoLink);autoLink.click();autoLink.remove();
+    message('Документ сформирован. Если загрузка не началась, нажмите ссылку под кнопкой.');
+  }catch(err){
+    $('downloadResult').textContent='Ошибка: '+err.message;
+    message('Не удалось сформировать документ: '+err.message);
+  }
   finally{btn.disabled=!templateZip;btn.textContent='Скачать заполненный Word-файл'}
 });
 
