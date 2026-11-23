@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<title>Инвентаризация оборудования</title>
+<style>
+:root{color-scheme:dark;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#000;color:#f5f5f7}
+*{box-sizing:border-box;min-width:0}
+html,body{margin:0;width:100%;max-width:100%;min-height:100%;overflow-x:hidden;background:#000;color:#f5f5f7}
+body{max-width:850px;margin:auto;padding:14px 10px calc(30px + env(safe-area-inset-bottom))}
+h1{font-size:24px;text-align:center;margin:8px 0 4px}
+.sub{font-size:13px;color:#a1a1aa;text-align:center;margin:0 0 16px}
+.panel,.item{background:#1c1c1e;border:1px solid #38383a;border-radius:15px;padding:13px;margin:11px 0;box-shadow:none}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin-bottom:12px}
+.stat{background:#2c2c2e;border-radius:10px;padding:10px 8px;font-size:12px;color:#c7c7cc;text-align:center}
+.stat b{display:block;font-size:21px;color:#fff;margin-top:4px}
+.bar{height:7px;background:#3a3a3c;border-radius:20px;overflow:hidden}
+.fill{height:100%;width:0;background:#0a84ff;transition:width .2s}
+.autosave,.note{font-size:12px;color:#a1a1aa;line-height:1.45}
+.autosave{display:flex;align-items:center;gap:7px;margin-top:10px}
+.dot{width:7px;height:7px;border-radius:50%;background:#30d158}
+input,select{width:100%;padding:12px;border:1px solid #48484a;border-radius:10px;background:#2c2c2e;color:#f5f5f7;font-size:16px;outline:none}
+input::placeholder{color:#8e8e93}
+label{display:block;font-size:12px;font-weight:650;color:#c7c7cc;margin:10px 0 5px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.wide{grid-column:1/-1}
+button{border:0;border-radius:11px;padding:12px 14px;font-size:15px;font-weight:650;cursor:pointer}
+button:disabled{opacity:.45}
+.primary{background:#0a84ff;color:#fff;width:100%}
+.secondary{background:#3a3a3c;color:#f5f5f7}
+.addbtn{margin-top:12px}
+.search{margin-bottom:10px}
+.filters{display:flex;gap:6px;overflow-x:auto;padding:1px 0 5px;margin:8px 0}
+.filters button{white-space:nowrap;background:#3a3a3c;color:#d1d1d6;padding:9px 12px;font-size:13px}
+.filters button.active{background:#0a84ff;color:white}
+.item{padding:12px;margin:8px 0}
+.itemtop{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.itemname{font-weight:700;line-height:1.35;overflow-wrap:anywhere}
+.meta{font-size:12px;color:#a1a1aa;margin-top:5px;line-height:1.45;overflow-wrap:anywhere}
+.pill{width:11px;height:11px;flex:0 0 11px;border-radius:50%;background:#8e8e93;margin-top:4px}
+.pill.yes{background:#30d158}.pill.no{background:#ff453a}
+.actions{display:flex;gap:7px;margin-top:11px}
+.actions button{flex:1;padding:10px 7px;font-size:14px}
+.yesbtn{background:#173d2a;color:#6ee7a0}.nobtn{background:#492326;color:#ff8a8a}
+.clearbtn,.deletebtn{background:#3a3a3c;color:#c7c7cc}
+.deletebtn{width:100%;margin-top:8px;padding:9px;font-size:12px}
+.empty{text-align:center;color:#a1a1aa;font-size:13px;padding:22px 8px}
+#message{font-size:13px;color:#a1a1aa;margin-top:9px;white-space:pre-wrap}
+footer{text-align:center;color:#71717a;font-size:11px;margin:18px 0}
+@media(max-width:560px){body{padding-left:7px;padding-right:7px}.panel{padding:10px}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.grid{grid-template-columns:1fr 1fr}.item{padding:11px}}
+@media(max-width:350px){.grid{grid-template-columns:1fr}.wide{grid-column:auto}h1{font-size:21px}}
+</style>
+</head>
+<body>
+<h1>Инвентаризация</h1>
+<p class="sub">Загрузка пустого шаблона Word и заполнение инвентаризации</p>
+
+<section class="panel">
+  <h3 style="margin:0 0 4px">Шаблон инвентаризации Word</h3>
+  <p class="note" style="margin:0 0 8px">Загрузите пустой файл .docx с адресом и названием объекта. Программа добавит в него оборудование из списка ниже.</p>
+  <input id="templateFile" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
+  <div id="templateState" class="note" style="margin-top:8px">Шаблон не загружен</div>
+  <button class="primary" id="downloadDocx" style="margin-top:10px" disabled>Скачать заполненный Word-файл</button>
+</section>
+
+<section class="panel">
+  <div class="stats">
+    <div class="stat">Всего<b id="total">0</b></div>
+    <div class="stat">Не проверено<b id="blank">0</b></div>
+    <div class="stat">Да<b id="yes">0</b></div>
+    <div class="stat">Нет<b id="no">0</b></div>
+  </div>
+  <div class="bar"><div class="fill" id="progress"></div></div>
+  <div class="autosave"><span class="dot"></span><span id="saveState">Автосохранение включено</span></div>
+</section>
+
+<section class="panel">
+  <h3 style="margin:0 0 4px">Добавить оборудование</h3>
+  <p class="note" style="margin:0 0 8px">Заполните известные данные. Достаточно указать тип или название оборудования.</p>
+  <div class="grid">
+    <div><label for="type">Тип оборудования</label><input id="type" placeholder="Например, IP-телефон"></div>
+    <div><label for="name">Название / модель</label><input id="name" placeholder="Например, Cisco 3905"></div>
+    <div><label for="inv">Инвентарный номер ИТ</label><input id="inv" placeholder="IT.PC.000000"></div>
+    <div><label for="serial">Серийный номер</label><input id="serial" placeholder="Серийный номер"></div>
+    <div class="wide"><label for="mac">MAC-адрес</label><input id="mac" placeholder="Например, 1C1086C52AAA" autocapitalize="characters"></div>
+    <div class="wide"><label for="status">Фактическое присутствие</label>
+      <select id="status"><option value="">Не отмечено</option><option value="Да">Да</option><option value="Нет">Нет</option></select>
+    </div>
+  </div>
+  <button class="primary addbtn" id="add">＋ Добавить оборудование</button>
+  <div id="message" aria-live="polite"></div>
+</section>
+
+<section class="panel">
+  <input class="search" id="search" type="search" placeholder="Поиск: номер, название, серийный номер">
+  <div class="filters">
+    <button class="active" data-filter="all">Все</button>
+    <button data-filter="blank">Не проверено</button>
+    <button data-filter="Да">Да</button>
+    <button data-filter="Нет">Нет</button>
+  </div>
+  <div id="list"></div>
+</section>
+<section class="panel">
+  <button class="secondary" id="clear" style="width:100%">Очистить весь список</button>
+  <p class="note" style="margin:9px 0 0">Список автоматически сохраняется в памяти браузера на этом устройстве. При повторном открытии страницы оборудование останется на месте.</p>
+</section>
+<footer>Данные хранятся локально в вашем браузере и не отправляются на сервер.</footer>
+
+<script>
+(()=>{
+'use strict';
+const $=id=>document.getElementById(id);
+const KEY='inventory-helper-standalone-v1';
+let records=[],filter='all',templateZip=null,templateName='';
+function message(text){$('message').textContent=text}
+function save(){
+  try{
+    localStorage.setItem(KEY,JSON.stringify(records));
+    $('saveState').textContent='Сохранено на устройстве · '+new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
+  }catch(e){$('saveState').textContent='Не удалось сохранить данные в браузере'}
+}
+function stats(){
+  const yes=records.filter(x=>x.status==='Да').length;
+  const no=records.filter(x=>x.status==='Нет').length;
+  const blank=records.length-yes-no;
+  $('total').textContent=records.length;
+  $('yes').textContent=yes;
+  $('no').textContent=no;
+  $('blank').textContent=blank;
+  $('progress').style.width=(records.length?(yes+no)/records.length*100:0)+'%';
+}
+function norm(s){return String(s||'').toLocaleLowerCase('ru-RU').replace(/\s+/g,' ').trim()}
+function render(){
+  stats();
+  const q=norm($('search').value),list=$('list');
+  list.innerHTML='';
+  const shown=records.filter(r=>{
+    const status=r.status||'';
+    return (filter==='all'||(filter==='blank'?!status:status===filter)) &&
+      norm([r.num,r.type,r.name,r.inv,r.serial,r.mac].join(' ')).includes(q);
+  });
+  if(!shown.length){
+    const p=document.createElement('div');p.className='empty';
+    p.textContent=records.length?'По заданным условиям ничего не найдено.':'Список пока пуст. Добавьте первую позицию выше.';
+    list.append(p);return;
+  }
+  shown.forEach(r=>{
+    const card=document.createElement('article');card.className='item';
+    const top=document.createElement('div');top.className='itemtop';
+    const info=document.createElement('div');
+    const title=document.createElement('div');title.className='itemname';
+    title.textContent='№ '+r.num+'. '+(r.name||r.type||'Оборудование');
+    const meta=document.createElement('div');meta.className='meta';
+    meta.textContent=[r.type,r.inv&&('Инв. № '+r.inv),r.serial&&('Сер. № '+r.serial),r.mac&&('MAC '+r.mac)].filter(Boolean).join(' · ')||'Дополнительные данные не указаны';
+    info.append(title,meta);
+    const dot=document.createElement('span');dot.className='pill '+(r.status==='Да'?'yes':r.status==='Нет'?'no':'');
+    dot.title=r.status||'Не проверено';
+    top.append(info,dot);card.append(top);
+    const actions=document.createElement('div');actions.className='actions';
+    [['Да','yesbtn'],['Нет','nobtn'],['×','clearbtn']].forEach(([label,cls])=>{
+      const b=document.createElement('button');b.className=cls;b.textContent=label;
+      b.addEventListener('click',()=>{
+        r.status=label==='×'?'':label;save();render();
+      });actions.append(b);
+    });
+    card.append(actions);
+    const del=document.createElement('button');del.className='deletebtn';del.textContent='Удалить карточку оборудования';
+    del.addEventListener('click',()=>{
+      if(!confirm('Удалить оборудование № '+r.num+'?'))return;
+      records=records.filter(x=>x.id!==r.id);
+      renumber();save();render();message('Карточка оборудования удалена.');
+    });
+    card.append(del);list.append(card);
+  });
+}
+function renumber(){records.forEach((r,i)=>r.num=i+1)}
+
+const W='http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+function setCellText(cell,value){
+  let p=cell.getElementsByTagNameNS(W,'p')[0];
+  if(!p){p=document.createElementNS(W,'w:p');cell.appendChild(p)}
+  const pPr=p.getElementsByTagNameNS(W,'pPr')[0];
+  while(p.firstChild)p.removeChild(p.firstChild);
+  if(pPr)p.appendChild(pPr);
+  const run=document.createElementNS(W,'w:r'),t=document.createElementNS(W,'w:t');
+  t.setAttributeNS('http://www.w3.org/XML/1998/namespace','xml:space','preserve');
+  t.textContent=String(value??'');
+  run.appendChild(t);p.appendChild(run);
+}
+function setParagraphValue(paragraph,label,value){
+  const current=paragraph.textContent||'';
+  if(!current.includes(label))return false;
+  const pPr=paragraph.getElementsByTagNameNS(W,'pPr')[0];
+  while(paragraph.firstChild)paragraph.removeChild(paragraph.firstChild);
+  if(pPr)paragraph.appendChild(pPr);
+  const run=document.createElementNS(W,'w:r'),t=document.createElementNS(W,'w:t');
+  t.setAttributeNS('http://www.w3.org/XML/1998/namespace','xml:space','preserve');
+  t.textContent=label+' '+value;run.appendChild(t);paragraph.appendChild(run);
+  return true;
+}
+$('templateFile').addEventListener('change',async e=>{
+  const file=e.target.files&&e.target.files[0];
+  if(!file)return;
+  if(!file.name.toLowerCase().endsWith('.docx')){ $('templateState').textContent='Выберите файл формата .docx';return; }
+  try{
+    if(!window.JSZip)throw new Error('Не удалось загрузить модуль работы с Word. Проверьте подключение к интернету и повторите попытку.');
+    templateZip=await JSZip.loadAsync(file);
+    if(!templateZip.file('word/document.xml'))throw new Error('В файле не найдена основная часть Word-документа.');
+    templateName=file.name;
+    $('templateState').textContent='Загружен шаблон: '+file.name;
+    $('downloadDocx').disabled=false;
+    message('Шаблон загружен. Добавьте оборудование и скачайте заполненный документ.');
+  }catch(err){
+    templateZip=null;$('downloadDocx').disabled=true;
+    $('templateState').textContent='Ошибка загрузки: '+err.message;
+  }
+});
+$('downloadDocx').addEventListener('click',async()=>{
+  if(!templateZip){message('Сначала загрузите пустой Word-шаблон.');return}
+  if(!records.length){message('Сначала добавьте оборудование в список.');return}
+  const btn=$('downloadDocx');btn.disabled=true;btn.textContent='Формирование документа…';
+  try{
+    const zip=await JSZip.loadAsync(await templateZip.generateAsync({type:'blob'}));
+    const xml=await zip.file('word/document.xml').async('string');
+    const doc=new DOMParser().parseFromString(xml,'application/xml');
+    if(doc.getElementsByTagName('parsererror').length)throw new Error('Не удалось прочитать структуру Word-файла.');
+    const tables=doc.getElementsByTagNameNS(W,'tbl');
+    if(!tables.length)throw new Error('В шаблоне не найдена таблица оборудования.');
+    const table=tables[0];
+    let rows=Array.from(table.getElementsByTagNameNS(W,'tr'));
+    if(rows.length<2)throw new Error('В таблице нет строк для оборудования.');
+    const templateRow=rows[rows.length-1];
+    while(rows.length<records.length){
+      const clone=templateRow.cloneNode(true);table.appendChild(clone);rows.push(clone);
+    }
+    records.forEach((r,i)=>{
+      const cells=Array.from(rows[i+1].getElementsByTagNameNS(W,'tc'));
+      const vals=[r.num,r.type,r.name,r.inv,r.serial,r.mac,'',r.status,''];
+      vals.forEach((v,j)=>{if(cells[j])setCellText(cells[j],v)});
+    });
+    // Update totals in the existing summary paragraphs, retaining the template's labels and layout.
+    const paras=Array.from(doc.getElementsByTagNameNS(W,'p'));
+    const yes=records.filter(r=>r.status==='Да').length;
+    const no=records.filter(r=>r.status==='Нет').length;
+    paras.forEach(p=>{
+      const s=p.textContent||'';
+      if(s.includes('Всего проверено единиц оборудования:'))setParagraphValue(p,'Всего проверено единиц оборудования:',records.length);
+      else if(s.includes('Присутствует на месте:'))setParagraphValue(p,'Присутствует на месте:',yes);
+      else if(s.includes('Отсутствует:'))setParagraphValue(p,'Отсутствует:',no);
+    });
+    zip.file('word/document.xml',new XMLSerializer().serializeToString(doc));
+    const blob=await zip.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+    const url=URL.createObjectURL(blob),a=document.createElement('a');
+    a.href=url;a.download=(templateName.replace(/\.docx$/i,'')||'Инвентаризация')+'_заполненный.docx';
+    document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);
+    message('Готово. Заполненный Word-файл сформирован.');
+  }catch(err){message('Не удалось сформировать документ: '+err.message)}
+  finally{btn.disabled=!templateZip;btn.textContent='Скачать заполненный Word-файл'}
+});
+
+$('add').addEventListener('click',()=>{
+  const type=$('type').value.trim(),name=$('name').value.trim();
+  if(!type&&!name){message('Укажите хотя бы тип оборудования или название.');return}
+  records.push({
+    id:(window.crypto&&crypto.randomUUID)?crypto.randomUUID():String(Date.now())+Math.random(),
+    num:records.length+1,type,name,inv:$('inv').value.trim(),
+    serial:$('serial').value.trim(),mac:$('mac').value.trim().toUpperCase(),
+    status:$('status').value
+  });
+  ['type','name','inv','serial','mac'].forEach(id=>$(id).value='');
+  $('status').value='';
+  filter='all';
+  document.querySelectorAll('.filters button').forEach(b=>b.classList.toggle('active',b.dataset.filter==='all'));
+  save();render();message('Оборудование добавлено в список.');
+});
+$('search').addEventListener('input',render);
+document.querySelectorAll('.filters button').forEach(b=>b.addEventListener('click',()=>{
+  filter=b.dataset.filter;
+  document.querySelectorAll('.filters button').forEach(x=>x.classList.toggle('active',x===b));
+  render();
+}));
+$('clear').addEventListener('click',()=>{
+  if(!records.length)return;
+  if(!confirm('Удалить весь список оборудования? Это действие нельзя отменить.'))return;
+  records=[];save();render();message('Список очищен.');
+});
+try{
+  const saved=JSON.parse(localStorage.getItem(KEY)||'[]');
+  if(Array.isArray(saved))records=saved.filter(x=>x&&typeof x==='object');
+}catch(e){records=[]}
+renumber();render();
+if(records.length)message('Загружено сохранённое оборудование: '+records.length+' поз.');
+})();
+</script>
+</body>
+</html>
